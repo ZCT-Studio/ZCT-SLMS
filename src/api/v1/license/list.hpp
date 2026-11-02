@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_LICENSE_LIST
-#define TCV_API_V1_LICENSE_LIST
+#ifndef ZCT_SLMS_API_V1_LICENSE_LIST
+#define ZCT_SLMS_API_V1_LICENSE_LIST
 
 #include <exception>
 #include <functional>
@@ -37,28 +37,34 @@
 #include "services/security_service.hpp"
 #include "services/subuser_update_service.hpp"
 
-namespace tcv::inside::api::v1::license::list {
+namespace zct_slms::inside::api::v1::license::list {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        auto appid_str = tcv::inside::api::v1::common::paramStr(req, "app_id");
-        auto app = tcv::repo::AppRepo::findByAppid(appid_str);
+        auto appid_str = zct_slms::inside::api::v1::common::paramStr(req, "app_id");
+        auto app = zct_slms::repo::AppRepo::findByAppid(appid_str);
         if (!app) {
             cb(drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeFail(tcv::api::ErrorCode::APP_NOT_FOUND, "app_id 对应的 APP 不存在")
+                zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "app_id 对应的 APP 不存在")
             ));
             return;
         }
         const int64_t app_id = app->id;
-        const auto user_type = tcv::inside::api::v1::common::currentUserType(req);
-        const int64_t cur_user_id = tcv::inside::api::v1::common::currentUserId(req);
-
-        std::vector<tcv::models::License> lics;
+        const auto user_type = zct_slms::inside::api::v1::common::currentUserType(req);
+        const int64_t cur_user_id = zct_slms::inside::api::v1::common::currentUserId(req);
+        bool allowed = user_type == "ADMIN" || (user_type == "USER" && app->owner_id == cur_user_id);
         if (user_type == "SUBUSER") {
-            lics = tcv::repo::LicenseRepo::listByAppAndCreator(app_id, cur_user_id, "SUBUSER");
+            const auto assigned = zct_slms::db::Database::instance().queryParams("SELECT p.app_id FROM user_app_permissions p JOIN sub_users s ON s.id = p.sub_user_id WHERE p.sub_user_id = ? AND p.app_id = ? AND s.parent_id = ?",cur_user_id,app->id,app->owner_id);
+            allowed = !assigned.empty();
+        }
+        if (!allowed) { cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(zct_slms::api::ErrorCode::UNAUTHORIZED,"无权查看此应用卡密"))); return; }
+
+        std::vector<zct_slms::models::License> lics;
+        if (user_type == "SUBUSER") {
+            lics = zct_slms::repo::LicenseRepo::listByAppAndCreator(app_id, cur_user_id, "SUBUSER");
         } else {
-            lics = tcv::repo::LicenseRepo::listByApp(app_id);
+            lics = zct_slms::repo::LicenseRepo::listByApp(app_id);
         }
 
         Json::Value arr(Json::arrayValue);
@@ -68,7 +74,14 @@ namespace tcv::inside::api::v1::license::list {
             v["license"] = l.license;
             v["status"] = l.status;
             v["banned"] = l.banned != 0;
-            v["binding_mode"] = l.binding_mode;
+            v["binding_mode"] = app->binding_mode;
+            if (app->binding_mode == "DEVICE" || app->binding_mode == "IP_AND_DEVICE") {
+                v["bound_device_fingerprint"] = l.bound_device_hash.value_or("");
+            }
+            if (app->binding_mode == "IP" || app->binding_mode == "IP_AND_DEVICE") {
+                v["bound_ip_hash"] = l.bound_ip_hash.value_or("");
+                v["bound_ip"] = l.bound_ip_hash && l.last_used_ip && zct_slms::crypto::sha256Hex(*l.last_used_ip) == *l.bound_ip_hash ? *l.last_used_ip : "";
+            }
             v["license_type"] = l.license_type;
             v["expires_at"] = l.expires_at;
             v["created_at"] = l.created_at;
@@ -76,7 +89,7 @@ namespace tcv::inside::api::v1::license::list {
             v["unbind_limit"] = l.unbind_limit;
 
             if (l.created_by_role == "SUBUSER") {
-                auto su_rows = tcv::db::Database::instance().queryParams(
+                auto su_rows = zct_slms::db::Database::instance().queryParams(
                     "SELECT username FROM sub_users WHERE id = ?", l.created_by
                 );
                 std::string creator = su_rows.empty() ? "subuser" : repo::getStr(su_rows[0], "username");
@@ -86,7 +99,7 @@ namespace tcv::inside::api::v1::license::list {
                 }
                 v["creator"] = creator;
             } else {
-                auto owner = tcv::repo::UserRepo::findById(l.created_by);
+                auto owner = zct_slms::repo::UserRepo::findById(l.created_by);
                 std::string creator = owner ? owner->username : "owner";
                 if (user_type == "USER" && l.created_by == cur_user_id) {
                     creator += '*';
@@ -95,8 +108,8 @@ namespace tcv::inside::api::v1::license::list {
             }
             arr.append(v);
         }
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(arr)));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(arr)));
     }
 }
 
-#endif // TCV_API_V1_LICENSE_LIST
+#endif // ZCT_SLMS_API_V1_LICENSE_LIST

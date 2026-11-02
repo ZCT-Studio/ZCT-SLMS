@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_SERVICES_LICENSE_SERVICE
-#define TCV_SERVICES_LICENSE_SERVICE
+#ifndef ZCT_SLMS_SERVICES_LICENSE_SERVICE
+#define ZCT_SLMS_SERVICES_LICENSE_SERVICE
 
 #include <optional>
 #include <string>
@@ -26,7 +26,7 @@
 #include <format>
 #include "common/types.hpp"
 
-namespace tcv::service {
+namespace zct_slms::service {
     struct LicenseVerifyInput {
         std::string license_plain;
         std::string ip;
@@ -152,6 +152,10 @@ namespace tcv::service {
                         );
                         if (rows.empty()) return false;
                         main_user_id = repo::getInt(rows[0], "parent_id");
+                        auto quota=db::Database::instance().queryParams("SELECT quota_limit,quota_used FROM sub_users WHERE id = ?",in.owner_id);
+                        if(quota.empty())return false;
+                        const auto limit=repo::getInt(quota[0],"quota_limit"),used=repo::getInt(quota[0],"quota_used");
+                        if(used>INT64_MAX-total_cost||(limit!=-1&&(used>limit||total_cost>limit-used)))return false;
                     }
 
                     if (int64_t new_balance = repo::UserRepo::atomicConsumeBalance(main_user_id, total_cost); new_balance == -1 && total_cost > 0) {
@@ -171,7 +175,7 @@ namespace tcv::service {
                     std::string first_plain;
                     for (int64_t i = 0; i < in.count; ++i) {
                         int gen_len = std::min(std::max(in.license_length, 8), 256);
-                        std::string plain = tcv::crypto::randomUppercaseAlphanumeric(gen_len);
+                        std::string plain = zct_slms::crypto::randomUppercaseAlphanumeric(gen_len);
 
                         models::License l;
                         l.app_id = app_db_id;
@@ -256,8 +260,13 @@ namespace tcv::service {
             // License.binding_mode 已弃用，统一使用 App.binding_mode
             std::string b_mode = app_binding;
 
+            if ((b_mode == "DEVICE" || b_mode == "IP_AND_DEVICE") && (!in.device || in.device->empty())) {
+                out.code = api::ErrorCode::LICENSE_BOUND_DEV;
+                out.message = "需要 device 参数";
+                return out;
+            }
             if (b_mode == "IP" || b_mode == "IP_AND_DEVICE") {
-                std::string ip_hash = tcv::crypto::sha256Hex(in.ip);
+                std::string ip_hash = zct_slms::crypto::sha256Hex(in.ip);
                 if (lic->bound_ip_hash && *lic->bound_ip_hash != ip_hash) {
                     out.code = api::ErrorCode::LICENSE_BOUND_IP;
                     out.message = "IP 绑定不匹配";
@@ -269,7 +278,7 @@ namespace tcv::service {
                     if (b_mode == "IP") {
                         repo::LicenseRepo::bindIp(lic->id, ip_hash, now);
                     } else {
-                        std::string dev_hash = tcv::crypto::sha256Hex(in.device.value_or(""));
+                        std::string dev_hash = zct_slms::crypto::sha256Hex(in.device.value_or(""));
                         repo::LicenseRepo::bindIpAndDevice(lic->id, ip_hash, dev_hash, now);
                     }
                     lic->bound_ip_hash = ip_hash;
@@ -283,7 +292,7 @@ namespace tcv::service {
                     out.message = "需要 device 参数";
                     return out;
                 }
-                std::string dev_hash = tcv::crypto::sha256Hex(*in.device);
+                std::string dev_hash = zct_slms::crypto::sha256Hex(*in.device);
                 if (lic->bound_device_hash && *lic->bound_device_hash != dev_hash) {
                     out.code = api::ErrorCode::LICENSE_BOUND_DEV;
                     out.message = "设备绑定不匹配";
@@ -301,7 +310,7 @@ namespace tcv::service {
             repo::LicenseRepo::touchLastUsed(
                 lic->id,
                 in.ip,
-                in.device ? std::optional(tcv::crypto::sha256Hex(*in.device)) : std::nullopt,
+                in.device ? std::optional(zct_slms::crypto::sha256Hex(*in.device)) : std::nullopt,
                 now
             );
 
@@ -407,9 +416,9 @@ namespace tcv::service {
             return r;
         }
 
-        inline tcv::common::Result ban(int64_t license_id) {
+        inline zct_slms::common::Result ban(int64_t license_id) {
             const auto lic = repo::LicenseRepo::findById(license_id);
-            if (!lic) return tcv::common::Result::fail(5001, "卡密不存在");
+            if (!lic) return zct_slms::common::Result::fail(5001, "卡密不存在");
             const int64_t now = std::time(nullptr);
             repo::LicenseRepo::updateFieldInt(license_id, "banned", 1);
             repo::AuditRepo::log(
@@ -424,12 +433,12 @@ namespace tcv::service {
                 "{}",
                 now
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result unban(int64_t license_id) {
+        inline zct_slms::common::Result unban(int64_t license_id) {
             const auto lic = repo::LicenseRepo::findById(license_id);
-            if (!lic) return tcv::common::Result::fail(5001, "卡密不存在");
+            if (!lic) return zct_slms::common::Result::fail(5001, "卡密不存在");
             repo::LicenseRepo::updateFieldInt(license_id, "banned", 0);
             repo::AuditRepo::log(
                 "OWNER",
@@ -443,14 +452,15 @@ namespace tcv::service {
                 "{}",
                 std::time(nullptr)
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result addTime(int64_t license_id, int64_t add_seconds) {
+        inline zct_slms::common::Result addTime(int64_t license_id, int64_t add_seconds) {
             const auto lic = repo::LicenseRepo::findById(license_id);
-            if (!lic) return tcv::common::Result::fail(5001, "卡密不存在");
+            if (!lic) return zct_slms::common::Result::fail(5001, "卡密不存在");
             const int64_t now = std::time(nullptr);
             const int64_t base = lic->expires_at == -1 ? now : lic->expires_at;
+            if (add_seconds <= 0 || base > std::numeric_limits<int64_t>::max() - add_seconds) return zct_slms::common::Result::fail(1003, "延长时间必须为正数且不能溢出");
             const int64_t new_exp = base + add_seconds;
             repo::LicenseRepo::updateFieldInt(license_id, "expires_at", new_exp);
             repo::AuditRepo::log(
@@ -465,12 +475,12 @@ namespace tcv::service {
                 "{}",
                 now
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result setTime(int64_t license_id, int64_t new_expires_at) {
+        inline zct_slms::common::Result setTime(int64_t license_id, int64_t new_expires_at) {
             const auto lic = repo::LicenseRepo::findById(license_id);
-            if (!lic) return tcv::common::Result::fail(5001, "卡密不存在");
+            if (!lic) return zct_slms::common::Result::fail(5001, "卡密不存在");
             repo::LicenseRepo::updateFieldInt(license_id, "expires_at", new_expires_at);
             repo::AuditRepo::log(
                 "OWNER",
@@ -484,13 +494,13 @@ namespace tcv::service {
                 "{}",
                 std::time(nullptr)
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result setType(int64_t license_id, const std::string& new_license_type) {
+        inline zct_slms::common::Result setType(int64_t license_id, const std::string& new_license_type) {
             const auto lic = repo::LicenseRepo::findById(license_id);
-            if (!lic) return tcv::common::Result::fail(5001, "卡密不存在");
-            repo::LicenseRepo::updateField(license_id, "expires_at", new_license_type);
+            if (!lic) return zct_slms::common::Result::fail(5001, "卡密不存在");
+            repo::LicenseRepo::updateField(license_id, "license_type", new_license_type);
             repo::AuditRepo::log(
                 "OWNER",
                 lic->created_by,
@@ -503,12 +513,12 @@ namespace tcv::service {
                 "{}",
                 std::time(nullptr)
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result removeLicense(int64_t license_id, const bool hard = false) {
+        inline zct_slms::common::Result removeLicense(int64_t license_id, const bool hard = false) {
             const auto lic = repo::LicenseRepo::findById(license_id);
-            if (!lic) return tcv::common::Result::fail(5001, "卡密不存在");
+            if (!lic) return zct_slms::common::Result::fail(5001, "卡密不存在");
             if (hard) repo::LicenseRepo::hardDelete(license_id);
             else repo::LicenseRepo::softDelete(license_id);
             repo::AuditRepo::log(
@@ -523,7 +533,7 @@ namespace tcv::service {
                 "{}",
                 std::time(nullptr)
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
         inline Json::Value remainingOf(const models::License& lic) {
@@ -549,13 +559,13 @@ namespace tcv::service {
             return v;
         }
 
-        inline tcv::common::Result setUnbindLimit(const int64_t license_id, int new_limit) {
-            if (const auto lic = repo::LicenseRepo::findById(license_id); !lic) return tcv::common::Result::fail(5001, "卡密不存在");
+        inline zct_slms::common::Result setUnbindLimit(const int64_t license_id, int new_limit) {
+            if (const auto lic = repo::LicenseRepo::findById(license_id); !lic) return zct_slms::common::Result::fail(5001, "卡密不存在");
             if (new_limit < 0) new_limit = 0;
             repo::LicenseRepo::updateFieldInt(license_id, "unbind_limit", new_limit);
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
     }
 }
 
-#endif // TCV_SERVICES_LICENSE_SERVICE
+#endif // ZCT_SLMS_SERVICES_LICENSE_SERVICE

@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/10/3.
 //
 
-#ifndef TCV_DATABASE_DATABASE
-#define TCV_DATABASE_DATABASE
+#ifndef ZCT_SLMS_DATABASE_DATABASE
+#define ZCT_SLMS_DATABASE_DATABASE
 
 #include <cstddef>
 #include <ctime>
@@ -34,14 +34,14 @@
 
 // 三个具体后端实现
 #include "database/sqlite_database.hpp"
-#ifdef TCV_HAS_PGSQL
+#ifdef ZCT_SLMS_HAS_PGSQL
 #include "database/pgsql_database.hpp"
 #endif
-#ifdef TCV_HAS_MYSQL
+#ifdef ZCT_SLMS_HAS_MYSQL
 #include "database/mysql_database.hpp"
 #endif
 
-namespace tcv::db {
+namespace zct_slms::db {
 
     // ── 门面类：持有一个 IDatabase 实例，repo/service 层零改动 ──
     class Database {
@@ -52,7 +52,7 @@ namespace tcv::db {
         }
 
         // 根据 config 创建后端
-        void open(const tcv::DatabaseConfig& cfg) {
+        void open(const zct_slms::DatabaseConfig& cfg) {
             std::unique_lock lock(mtx_);
             if (impl_) { impl_->close(); impl_.reset(); }
 
@@ -63,12 +63,12 @@ namespace tcv::db {
                 auto s = std::make_unique<SqliteDatabase>();
                 s->open(cfg.sqlite_path);
                 impl_ = std::move(s);
-                tcv::logger().INFO("Database opened: SQLite {}", std::filesystem::absolute(cfg.sqlite_path).string());
+                zct_slms::logger().INFO("Database opened: SQLite {}", std::filesystem::absolute(cfg.sqlite_path).string());
             } else if (type == "postgresql") {
-#ifdef TCV_HAS_PGSQL
+#ifdef ZCT_SLMS_HAS_PGSQL
                 auto& pg = cfg.pgsql;
                 std::string conninfo = std::format(
-                    "host={} port={} dbname={} user={} password={} sslmode={} application_name=TCV",
+                    "host={} port={} dbname={} user={} password={} sslmode={} application_name=ZCT_SLMS",
                     pg.host, pg.port, pg.dbname, pg.user,
                     pg.password.empty() ? "" : ("password=" + pg.password),
                     pg.sslmode
@@ -76,12 +76,12 @@ namespace tcv::db {
                 auto s = std::make_unique<PgsqlDatabase>();
                 s->open(conninfo);
                 impl_ = std::move(s);
-                tcv::logger().INFO("Database opened: PostgreSQL {}@{}:{}/{}", pg.user, pg.host, pg.port, pg.dbname);
+                zct_slms::logger().INFO("Database opened: PostgreSQL {}@{}:{}/{}", pg.user, pg.host, pg.port, pg.dbname);
 #else
-                throw SQLException("TCV was compiled without PostgreSQL support (TCV_HAS_PGSQL not defined)");
+                throw SQLException("ZCT_SLMS was compiled without PostgreSQL support (ZCT_SLMS_HAS_PGSQL not defined)");
 #endif
             } else if (type == "mysql") {
-#ifdef TCV_HAS_MYSQL
+#ifdef ZCT_SLMS_HAS_MYSQL
                 auto& my = cfg.mysql;
                 std::string conninfo = std::format(
                     "{}:{}:{}:{}:{}:{}",
@@ -90,9 +90,9 @@ namespace tcv::db {
                 auto s = std::make_unique<MysqlDatabase>();
                 s->open(conninfo);
                 impl_ = std::move(s);
-                tcv::logger().INFO("Database opened: MySQL {}@{}:{}/{}", my.user, my.host, my.port, my.dbname);
+                zct_slms::logger().INFO("Database opened: MySQL {}@{}:{}/{}", my.user, my.host, my.port, my.dbname);
 #else
-                throw SQLException("TCV was compiled without MySQL support (TCV_HAS_MYSQL not defined)");
+                throw SQLException("ZCT_SLMS was compiled without MySQL support (ZCT_SLMS_HAS_MYSQL not defined)");
 #endif
             } else {
                 throw SQLException(std::format("Unsupported database.type: {}", type));
@@ -186,7 +186,7 @@ namespace tcv::db {
             if (!std::filesystem::exists(target_dir)) {
                 // 检查是否有 001_initial.sql 等直接文件
                 if (std::filesystem::exists(p / "001_initial.sql")) {
-                    tcv::logger().WARN(
+                    zct_slms::logger().WARN(
                         "No backend-specific migrations/{}/ dir found, "
                         "falling back to plain {} (all SQLs must be cross-DB compatible).",
                         backend_dir, migrationsDir);
@@ -229,15 +229,15 @@ namespace tcv::db {
                         "INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
                         version, f_name, now
                     );
-                    tcv::logger().INFO("[{}] Migration applied: {}", backend, f_name);
+                    zct_slms::logger().INFO("[{}] Migration applied: {}", backend, f_name);
                 } catch (const std::exception& e) {
-                    tcv::logger().ERROR("[{}] Migration FAILED {}: {}", backend, f_name, e.what());
+                    zct_slms::logger().ERROR("[{}] Migration FAILED {}: {}", backend, f_name, e.what());
                     throw;
                 }
             }
 
             if (use_plain) {
-                tcv::logger().WARN(
+                zct_slms::logger().WARN(
                     "Consider splitting migrations into migrations/{}/ for full backend-specific control.",
                     backend_dir);
             }
@@ -273,4 +273,4 @@ namespace tcv::db {
     };
 }
 
-#endif // TCV_DATABASE_DATABASE
+#endif // ZCT_SLMS_DATABASE_DATABASE

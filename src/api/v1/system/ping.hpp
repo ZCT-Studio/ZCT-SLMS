@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_SYSTEM_PING
-#define TCV_API_V1_SYSTEM_PING
+#ifndef ZCT_SLMS_API_V1_SYSTEM_PING
+#define ZCT_SLMS_API_V1_SYSTEM_PING
 
 #include <exception>
 #include <functional>
@@ -36,19 +36,23 @@
 #include "services/license_service.hpp"
 #include "services/security_service.hpp"
 #include "services/subuser_update_service.hpp"
+#include "ZCLibLog/inside/logger_constants.hpp"
+#include "ZACLib/ZACLib_Constants.hpp"
 
-namespace tcv::inside::api::v1::system::ping {
+namespace zct_slms::inside::api::v1::system::ping {
     inline void handle(
-        const drogon::HttpRequestPtr&,
+        const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
         Json::Value v;
         v["pong"] = true;
-        v["project"] = tcv::constants::PROJECT_NAME;
-        v["version"] = tcv::constants::PROJECT_VERSION;
+        v["project"] = zct_slms::constants::PROJECT_NAME;
+        v["version"] = zct_slms::constants::PROJECT_VERSION;
+        auto auth=zct_slms::service::AuthService::authenticateSession(zct_slms::inside::api::v1::common::authBearer(req));
+        if(auth.success&&auth.user_type=="ADMIN"){v["components"]["ZCLibLog"]=ZCLibLog::Constants::VersionName;v["components"]["ZACLib"]=ZACLIB::Constants::VersionName;}
         v["server_time"] = static_cast<Json::Int64>(std::time(nullptr));
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(v)));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // TCV_API_V1_SYSTEM_PING
+#endif // ZCT_SLMS_API_V1_SYSTEM_PING

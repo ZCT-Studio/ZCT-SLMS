@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_REPOSITORIES_LICENSE_REPO
-#define TCV_REPOSITORIES_LICENSE_REPO
+#ifndef ZCT_SLMS_REPOSITORIES_LICENSE_REPO
+#define ZCT_SLMS_REPOSITORIES_LICENSE_REPO
 
 #include <cstdint>
 #include <ctime>
@@ -30,44 +30,44 @@
 #include "database/database.hpp"
 #include "models/models.hpp"
 
-namespace tcv::repo {
+namespace zct_slms::repo {
     namespace row_helper {
-        inline std::string findCol(const tcv::db::Row& r, const std::string& name) {
+        inline std::string findCol(const zct_slms::db::Row& r, const std::string& name) {
             for (auto& [k, v] : r) if (k == name) return v;
             return {};
         }
 
-        inline bool colIsNull(const tcv::db::Row& r, const std::string& name) {
+        inline bool colIsNull(const zct_slms::db::Row& r, const std::string& name) {
             for (auto& [k, v] : r) if (k == name) return v.empty();
             return true;
         }
     } // namespace row_helper
 
-    inline int64_t getInt(const tcv::db::Row& r, const std::string& col) {
+    inline int64_t getInt(const zct_slms::db::Row& r, const std::string& col) {
         const auto v = row_helper::findCol(r, col);
         if (v.empty()) return 0;
         try { return std::stoll(v); } catch (...) { return 0; }
     }
 
-    inline std::string getStr(const tcv::db::Row& r, const std::string& col) {
+    inline std::string getStr(const zct_slms::db::Row& r, const std::string& col) {
         return row_helper::findCol(r, col);
     }
 
-    inline std::optional<int64_t> getOptInt(const tcv::db::Row& r, const std::string& col) {
+    inline std::optional<int64_t> getOptInt(const zct_slms::db::Row& r, const std::string& col) {
         const auto v = row_helper::findCol(r, col);
         if (v.empty()) return std::nullopt;
         try { return std::stoll(v); } catch (...) { return std::nullopt; }
     }
 
-    inline std::optional<std::string> getOptStr(const tcv::db::Row& r, const std::string& col) {
+    inline std::optional<std::string> getOptStr(const zct_slms::db::Row& r, const std::string& col) {
         auto v = row_helper::findCol(r, col);
         if (v.empty()) return std::nullopt;
         return v;
     }
 
     namespace LicenseRepo {
-        inline tcv::models::License fromRow(const tcv::db::Row& r) {
-            tcv::models::License l;
+        inline zct_slms::models::License fromRow(const zct_slms::db::Row& r) {
+            zct_slms::models::License l;
             l.id = getInt(r, "id");
             l.app_id = getInt(r, "app_id");
             l.license = getStr(r, "license");
@@ -97,8 +97,8 @@ namespace tcv::repo {
             return l;
         }
 
-        inline std::optional<tcv::models::License> findById(int64_t id) {
-            const auto rows = tcv::db::Database::instance().queryParams(
+        inline std::optional<zct_slms::models::License> findById(int64_t id) {
+            const auto rows = zct_slms::db::Database::instance().queryParams(
                 "SELECT * FROM licenses WHERE id = ?",
                 id
             );
@@ -121,19 +121,19 @@ namespace tcv::repo {
                 : "SELECT id FROM licenses WHERE license = ? AND status != 'deleted'";
 
             if (app_id > 0) {
-                auto rows = tcv::db::Database::instance().queryParams(sql, app_id, license_str);
+                auto rows = zct_slms::db::Database::instance().queryParams(sql, app_id, license_str);
                 if (!rows.empty()) return repo::getInt(rows[0], "id");
             } else {
-                auto rows = tcv::db::Database::instance().queryParams(sql, license_str);
+                auto rows = zct_slms::db::Database::instance().queryParams(sql, license_str);
                 if (!rows.empty()) return repo::getInt(rows[0], "id");
             }
             return std::nullopt;
         }
-        inline std::optional<tcv::models::License> findByAppAndLicense(
+        inline std::optional<zct_slms::models::License> findByAppAndLicense(
             int64_t app_id,
             const std::string& license
         ) {
-            const auto rows = tcv::db::Database::instance().queryParams(
+            const auto rows = zct_slms::db::Database::instance().queryParams(
                 "SELECT * FROM licenses WHERE app_id = ? AND license = ? AND status != 'deleted'",
                 app_id,
                 license
@@ -142,8 +142,8 @@ namespace tcv::repo {
             return fromRow(rows[0]);
         }
 
-        inline int64_t insert(const tcv::models::License& l) {
-            tcv::db::Database::instance().execParams(
+        inline int64_t insert(const zct_slms::models::License& l) {
+            zct_slms::db::Database::instance().execParams(
                 "INSERT INTO licenses("
                 "app_id, license, remark, created_at, activated_at, expires_at, "
                 "status, banned, binding_mode, bound_ip_hash, bound_device_hash, "
@@ -177,11 +177,11 @@ namespace tcv::repo {
                 l.storage_mode,
                 l.license_type
             );
-            return tcv::db::Database::instance().lastInsertId();
+            return zct_slms::db::Database::instance().lastInsertId();
         }
 
         inline void updateField(int64_t id, const std::string& col, const std::string& value) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 std::format("UPDATE licenses SET {} = ?, updated_at = ? WHERE id = ?", col),
                 value,
                 static_cast<int64_t>(std::time(nullptr)),
@@ -190,7 +190,7 @@ namespace tcv::repo {
         }
 
         inline void updateFieldInt(int64_t id, const std::string& col, int64_t value) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 std::format("UPDATE licenses SET {} = ?, updated_at = ? WHERE id = ?", col),
                 value,
                 static_cast<int64_t>(std::time(nullptr)),
@@ -203,11 +203,11 @@ namespace tcv::repo {
         }
 
         inline void hardDelete(int64_t id) {
-            tcv::db::Database::instance().execParams("DELETE FROM licenses WHERE id = ?", id);
+            zct_slms::db::Database::instance().execParams("DELETE FROM licenses WHERE id = ?", id);
         }
 
         inline void bindIp(int64_t id, const std::string& ip_hash, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE licenses SET bound_ip_hash = ?, status = 'active', "
                 "activated_at = COALESCE(activated_at, ?), updated_at = ? WHERE id = ?",
                 ip_hash,
@@ -218,7 +218,7 @@ namespace tcv::repo {
         }
 
         inline void bindDevice(int64_t id, const std::string& dev_hash, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE licenses SET bound_device_hash = ?, status = 'active', "
                 "activated_at = COALESCE(activated_at, ?), updated_at = ? WHERE id = ?",
                 dev_hash,
@@ -234,7 +234,7 @@ namespace tcv::repo {
             const std::string& dev_hash,
             int64_t now
         ) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE licenses SET bound_ip_hash = ?, bound_device_hash = ?, "
                 "status = 'active', activated_at = COALESCE(activated_at, ?), updated_at = ? WHERE id = ?",
                 ip_hash,
@@ -246,7 +246,7 @@ namespace tcv::repo {
         }
 
         inline void clearBinding(int64_t id, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE licenses SET bound_ip_hash = NULL, bound_device_hash = NULL, "
                 "updated_at = ? WHERE id = ?",
                 now,
@@ -255,7 +255,7 @@ namespace tcv::repo {
         }
 
         inline void incrUnbindCount(int64_t id, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE licenses SET unbind_count = unbind_count + 1, updated_at = ? WHERE id = ?",
                 now,
                 id
@@ -268,7 +268,7 @@ namespace tcv::repo {
             const std::optional<std::string>& dev_hash,
             int64_t now
         ) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE licenses SET last_used_at = ?, last_used_ip = ?, last_used_device_hash = ?, "
                 "updated_at = ? WHERE id = ?",
                 now,
@@ -279,25 +279,25 @@ namespace tcv::repo {
             );
         }
 
-        inline std::vector<tcv::models::License> listByApp(int64_t app_id, int limit = 200) {
-            auto rows = tcv::db::Database::instance().queryParams(
+        inline std::vector<zct_slms::models::License> listByApp(int64_t app_id, int limit = 200) {
+            auto rows = zct_slms::db::Database::instance().queryParams(
                 "SELECT * FROM licenses WHERE app_id = ? AND status != 'deleted' ORDER BY id DESC LIMIT ?",
                 app_id,
                 limit
             );
-            std::vector<tcv::models::License> out;
+            std::vector<zct_slms::models::License> out;
             out.reserve(rows.size());
             for (auto& r : rows) out.push_back(fromRow(r));
             return out;
         }
 
-        inline std::vector<tcv::models::License> listByAppAndCreator(
+        inline std::vector<zct_slms::models::License> listByAppAndCreator(
             int64_t app_id,
             int64_t created_by,
             const std::string& created_by_role,
             int limit = 200
         ) {
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
                 "SELECT * FROM licenses WHERE app_id = ? AND created_by = ? AND created_by_role = ? "
                 "AND status != 'deleted' ORDER BY id DESC LIMIT ?",
                 app_id,
@@ -305,7 +305,7 @@ namespace tcv::repo {
                 created_by_role,
                 limit
             );
-            std::vector<tcv::models::License> out;
+            std::vector<zct_slms::models::License> out;
             out.reserve(rows.size());
             for (auto& r : rows) out.push_back(fromRow(r));
             return out;
@@ -313,14 +313,14 @@ namespace tcv::repo {
     } // namespace LicenseRepo
 
     namespace SessionRepo {
-        inline std::optional<tcv::models::Session> findByTokenHash(const std::string& hash) {
-            auto rows = tcv::db::Database::instance().queryParams(
+        inline std::optional<zct_slms::models::Session> findByTokenHash(const std::string& hash) {
+            auto rows = zct_slms::db::Database::instance().queryParams(
                 "SELECT * FROM sessions WHERE token_hash = ? AND revoked = 0 AND expires_at > strftime('%s','now')",
                 hash
             );
             if (rows.empty()) return std::nullopt;
             const auto& r = rows[0];
-            tcv::models::Session s;
+            zct_slms::models::Session s;
             s.id = getInt(r, "id");
             s.user_type = getStr(r, "user_type");
             s.user_id = getInt(r, "user_id");
@@ -342,7 +342,7 @@ namespace tcv::repo {
             const std::string& ip,
             const std::string& ua
         ) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "INSERT INTO sessions(user_type, user_id, token_hash, expires_at, revoked, created_at, created_ip, user_agent)"
                 " VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
                 user_type,
@@ -353,18 +353,18 @@ namespace tcv::repo {
                 ip,
                 ua
             );
-            return tcv::db::Database::instance().lastInsertId();
+            return zct_slms::db::Database::instance().lastInsertId();
         }
 
         inline void revoke(int64_t session_id, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE sessions SET revoked = 1 WHERE id = ?",
                 session_id
             );
         }
 
         inline void revokeByHash(const std::string& hash) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE sessions SET revoked = 1 WHERE token_hash = ?",
                 hash
             );
@@ -373,7 +373,7 @@ namespace tcv::repo {
 
     namespace ConfigRepo {
         inline std::string get(const std::string& key, const std::string& def = "") {
-            auto v = tcv::db::Database::instance().queryScalar(
+            auto v = zct_slms::db::Database::instance().queryScalar(
                 "SELECT value FROM system_config WHERE key = ?",
                 key
             );
@@ -392,7 +392,7 @@ namespace tcv::repo {
         }
 
         inline void set(const std::string& key, const std::string& value, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "INSERT INTO system_config(key, value, description, updated_at) VALUES (?, ?, '', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
                 key,
@@ -415,7 +415,7 @@ namespace tcv::repo {
             const std::string& extra,
             int64_t now
         ) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "INSERT INTO audit_logs(actor_type, actor_id, action, target_type, target_id, "
                 "target_detail, result, ip, extra, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 actor_type,
@@ -431,14 +431,14 @@ namespace tcv::repo {
             );
         }
 
-        inline std::vector<tcv::models::AuditLog> listRecent(int limit = 200) {
-            auto rows = tcv::db::Database::instance().queryParams(
+        inline std::vector<zct_slms::models::AuditLog> listRecent(int limit = 200) {
+            auto rows = zct_slms::db::Database::instance().queryParams(
                 "SELECT * FROM audit_logs ORDER BY id DESC LIMIT ?",
                 limit
             );
-            std::vector<tcv::models::AuditLog> out;
+            std::vector<zct_slms::models::AuditLog> out;
             for (auto& r : rows) {
-                tcv::models::AuditLog a;
+                zct_slms::models::AuditLog a;
                 a.id = getInt(r, "id");
                 a.actor_type = getStr(r, "actor_type");
                 a.actor_id = getInt(r, "actor_id");
@@ -461,15 +461,15 @@ namespace tcv::repo {
             int64_t now = std::time(nullptr);
             bool inserted = false;
             try {
-                inserted = tcv::db::Database::instance().transaction(
+                inserted = zct_slms::db::Database::instance().transaction(
                     [&] {
-                        const auto existing = tcv::db::Database::instance().queryScalar(
+                        const auto existing = zct_slms::db::Database::instance().queryScalar(
                             "SELECT timestamp FROM nonces WHERE app_id = ? AND nonce = ?",
                             app_id,
                             nonce
                         );
                         if (existing) return false;
-                        tcv::db::Database::instance().execParams(
+                        zct_slms::db::Database::instance().execParams(
                             "INSERT INTO nonces(app_id, nonce, timestamp, used_at) VALUES (?,?,?,?)",
                             app_id,
                             nonce,
@@ -480,7 +480,7 @@ namespace tcv::repo {
                     }
                 );
             } catch (...) { return false; }
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "DELETE FROM nonces WHERE used_at < ?",
                 now - window_sec * 10
             );
@@ -527,4 +527,4 @@ namespace tcv::repo {
     }
 }
 
-#endif // TCV_REPOSITORIES_LICENSE_REPO
+#endif // ZCT_SLMS_REPOSITORIES_LICENSE_REPO

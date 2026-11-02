@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_SERVICES_SECURITY_SERVICE
-#define TCV_SERVICES_SECURITY_SERVICE
+#ifndef ZCT_SLMS_SERVICES_SECURITY_SERVICE
+#define ZCT_SLMS_SERVICES_SECURITY_SERVICE
 
 #include <deque>
 #include <cstdlib>
@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include "common/types.hpp"
 
-namespace tcv::service {
+namespace zct_slms::service {
     namespace SecurityService {
         inline std::string canonicalRequest(
             const std::string_view method,
@@ -55,7 +55,7 @@ namespace tcv::service {
         }
 
         inline std::string computeSignature(const std::string_view canonical, const std::string_view app_secret) {
-            return tcv::crypto::hmacSha256Hex(canonical, app_secret);
+            return zct_slms::crypto::hmacSha256Hex(canonical, app_secret);
         }
 
         struct AppVerifyContext {
@@ -66,19 +66,19 @@ namespace tcv::service {
             int app_status = 1;
         };
 
-        inline tcv::common::ResultOf<AppVerifyContext> verifyAppOnly(
+        inline zct_slms::common::ResultOf<AppVerifyContext> verifyAppOnly(
             const std::string& appid
         ) {
             const auto app = repo::AppRepo::findByAppid(appid);
-            if (!app) return tcv::common::ResultOf<AppVerifyContext>::fail(api::ErrorCode::APP_NOT_FOUND, "APPID 不存在");
-            if (app->status != 1) return tcv::common::ResultOf<AppVerifyContext>::fail(api::ErrorCode::APP_DISABLED, "APP 已禁用");
+            if (!app) return zct_slms::common::ResultOf<AppVerifyContext>::fail(api::ErrorCode::APP_NOT_FOUND, "APPID 不存在");
+            if (app->status != 1) return zct_slms::common::ResultOf<AppVerifyContext>::fail(api::ErrorCode::APP_DISABLED, "APP 已禁用");
 
             AppVerifyContext ctx;
             ctx.app_db_id = app->id;
             ctx.app_owner_id = app->owner_id;
             ctx.appid = app->appid;
             ctx.app_status = app->status;
-            return tcv::common::ResultOf<AppVerifyContext>::ok(std::move(ctx));
+            return zct_slms::common::ResultOf<AppVerifyContext>::ok(std::move(ctx));
         }
 
         struct SignatureVerifyResult {
@@ -98,7 +98,7 @@ namespace tcv::service {
             const std::string& app_secret
         ) {
             SignatureVerifyResult r;
-            auto& cfg = tcv::AppConfig::instance().security();
+            auto& cfg = zct_slms::AppConfig::instance().security();
             const int64_t now = std::time(nullptr);
 
             int64_t ts = 0;
@@ -114,13 +114,13 @@ namespace tcv::service {
                 return r;
             }
 
-            const std::string appid_hash = tcv::crypto::sha256Hex(appid); // : 用 app_db_id 更合适
+            const std::string appid_hash = zct_slms::crypto::sha256Hex(appid); // : 用 app_db_id 更合适
             // 这里先占位，让调用方从 App 查出 db_id 再试 nonce
             // 在中间件里再用 db_id 调 NonceRepo::tryUseNonce
             (void)appid_hash;
 
             const auto canonical = canonicalRequest(method, path, appid, timestamp_str, nonce, encode);
-            if (const auto expected = computeSignature(canonical, app_secret); expected != signature) {
+            if (const auto expected = computeSignature(canonical, app_secret); !zct_slms::crypto::constantTimeEqual(expected, signature)) {
                 r.code = api::ErrorCode::SIGNATURE_BAD;
                 r.message = "signature 校验失败";
                 return r;
@@ -141,6 +141,7 @@ namespace tcv::service {
         }
 
         bool tryAcquire(const std::string& key, int per_sec_limit) {
+            const std::lock_guard<std::mutex> lock(mtx_);
             const int64_t now = std::time(nullptr);
             auto& slot = buckets_[key];
             // 清理1秒前的
@@ -157,4 +158,4 @@ namespace tcv::service {
     };
 }
 
-#endif // TCV_SERVICES_SECURITY_SERVICE
+#endif // ZCT_SLMS_SERVICES_SECURITY_SERVICE

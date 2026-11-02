@@ -16,13 +16,17 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_CRYPTO_CRYPTO
-#define TCV_CRYPTO_CRYPTO
+#ifndef ZCT_SLMS_CRYPTO_CRYPTO
+#define ZCT_SLMS_CRYPTO_CRYPTO
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 
 #include <algorithm>
+#include <optional>
+#include <limits>
+#include <stdexcept>
+#include <openssl/crypto.h>
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -35,7 +39,7 @@
 #include <openssl/err.h>
 #include <argon2.h>
 
-namespace tcv::crypto {
+namespace zct_slms::crypto {
     inline std::string toHex(const std::string_view input) {
         static const char* HEX = "0123456789abcdef";
         std::string out;
@@ -54,6 +58,7 @@ namespace tcv::crypto {
             if (c >= 'A' && c <= 'F') return c - 'A' + 10;
             return -1;
         };
+        if (input.size() % 2 != 0) return {};
         std::string out;
         out.reserve(input.size() / 2);
         for (size_t i = 0; i + 1 < input.size(); i += 2) {
@@ -140,7 +145,7 @@ namespace tcv::crypto {
 
     inline std::string randomBytes(const size_t n) {
         std::string buf(n, '\0');
-        RAND_bytes(reinterpret_cast<unsigned char*>(buf.data()), static_cast<int>(n));
+        if (n > static_cast<size_t>(std::numeric_limits<int>::max()) || (n && RAND_bytes(reinterpret_cast<unsigned char*>(buf.data()), static_cast<int>(n)) != 1)) throw std::runtime_error("secure random generation failed");
         return buf;
     }
 
@@ -155,7 +160,7 @@ namespace tcv::crypto {
         std::string out;
         out.reserve(len);
         std::vector<unsigned char> rnd(len);
-        RAND_bytes(rnd.data(), static_cast<int>(len));
+        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1)) throw std::runtime_error("secure random generation failed");
         for (size_t i = 0; i < len; ++i)
             out.push_back(CHARS[rnd[i] % N]);
         return out;
@@ -168,7 +173,7 @@ namespace tcv::crypto {
         std::string out;
         out.reserve(len);
         std::vector<unsigned char> rnd(len);
-        RAND_bytes(rnd.data(), static_cast<int>(len));
+        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1)) throw std::runtime_error("secure random generation failed");
         for (size_t i = 0; i < len; ++i)
             out.push_back(CHARS[rnd[i] % N]);
         return out;
@@ -180,13 +185,13 @@ namespace tcv::crypto {
         std::string out;
         out.reserve(len);
         std::vector<unsigned char> rnd(len);
-        RAND_bytes(rnd.data(), static_cast<int>(len));
+        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1)) throw std::runtime_error("secure random generation failed");
         for (size_t i = 0; i < len; ++i)
             out.push_back(DIGITS[rnd[i] % N]);
         return out;
     }
 
-    #if defined(TCV_HAS_ARGON2)
+    #if defined(ZCT_SLMS_HAS_ARGON2)
     inline std::string argon2idHash(const std::string_view password, const std::string_view salt) {
         constexpr uint32_t t_cost = 2;
         constexpr uint32_t m_cost = 64 * 1024; // 64MB
@@ -242,12 +247,12 @@ namespace tcv::crypto {
     }
     #endif
 
-    inline std::string aes256GcmEncrypt(const std::string_view plaintext, const std::string_view key) {
-        if (key.size() != 32) return {}; // AES-256 key
+    inline std::string aeadEncrypt(const std::string_view plaintext, const std::string_view key, const EVP_CIPHER* algorithm) {
+        if (key.size() != static_cast<size_t>(EVP_CIPHER_key_length(algorithm))) return {};
         const auto* k = reinterpret_cast<const unsigned char*>(key.data());
 
         unsigned char nonce[12];
-        RAND_bytes(nonce, sizeof(nonce));
+        if (RAND_bytes(nonce, sizeof(nonce)) != 1) return {};
 
         std::string cipher(plaintext.size() + EVP_MAX_BLOCK_LENGTH, '\0');
         int cipher_len = 0;
@@ -256,7 +261,7 @@ namespace tcv::crypto {
         if (!ctx) return {};
 
         int out_len = 0;
-        if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, k, nonce)) {
+        if (1 != EVP_EncryptInit_ex(ctx, algorithm, nullptr, k, nonce)) {
             EVP_CIPHER_CTX_free(ctx);
             return {};
         }
@@ -296,8 +301,8 @@ namespace tcv::crypto {
         return out;
     }
 
-    inline std::string aes256GcmDecrypt(const std::string_view blob, const std::string_view key) {
-        if (key.size() != 32 || blob.size() < 12 + 16) return {};
+    inline std::optional<std::string> aeadDecrypt(const std::string_view blob, const std::string_view key, const EVP_CIPHER* algorithm) {
+        if (key.size() != static_cast<size_t>(EVP_CIPHER_key_length(algorithm)) || blob.size() < 12 + 16) return std::nullopt;
         const auto* k = reinterpret_cast<const unsigned char*>(key.data());
 
         const auto* nonce = reinterpret_cast<const unsigned char*>(blob.data());
@@ -307,12 +312,12 @@ namespace tcv::crypto {
 
         std::string plain(ct_len + EVP_MAX_BLOCK_LENGTH, '\0');
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-        if (!ctx) return {};
+        if (!ctx) return std::nullopt;
 
         int out_len = 0, total = 0;
-        if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, k, nonce)) {
+        if (1 != EVP_DecryptInit_ex(ctx, algorithm, nullptr, k, nonce)) {
             EVP_CIPHER_CTX_free(ctx);
-            return {};
+            return std::nullopt;
         }
         if (1 != EVP_DecryptUpdate(
                 ctx,
@@ -322,13 +327,13 @@ namespace tcv::crypto {
                 static_cast<int>(ct_len)
             )) {
             EVP_CIPHER_CTX_free(ctx);
-            return {};
+            return std::nullopt;
         }
         total = out_len;
 
         if (1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, const_cast<unsigned char*>(tag))) {
             EVP_CIPHER_CTX_free(ctx);
-            return {};
+            return std::nullopt;
         }
         if (1 != EVP_DecryptFinal_ex(
                 ctx,
@@ -336,7 +341,7 @@ namespace tcv::crypto {
                 &out_len
             )) {
             EVP_CIPHER_CTX_free(ctx);
-            return {};
+            return std::nullopt;
         }
         total += out_len;
         EVP_CIPHER_CTX_free(ctx);
@@ -344,6 +349,14 @@ namespace tcv::crypto {
         plain.resize(total);
         return plain;
     }
+    inline std::string aes128GcmEncrypt(std::string_view p, std::string_view k) { return aeadEncrypt(p, k, EVP_aes_128_gcm()); }
+    inline std::optional<std::string> aes128GcmDecrypt(std::string_view p, std::string_view k) { return aeadDecrypt(p, k, EVP_aes_128_gcm()); }
+    inline std::string aes256GcmEncrypt(std::string_view p, std::string_view k) { return aeadEncrypt(p, k, EVP_aes_256_gcm()); }
+    inline std::optional<std::string> aes256GcmDecrypt(std::string_view p, std::string_view k) { return aeadDecrypt(p, k, EVP_aes_256_gcm()); }
+    inline std::string chacha20Poly1305Encrypt(std::string_view p, std::string_view k) { return aeadEncrypt(p, k, EVP_chacha20_poly1305()); }
+    inline std::optional<std::string> chacha20Poly1305Decrypt(std::string_view p, std::string_view k) { return aeadDecrypt(p, k, EVP_chacha20_poly1305()); }
+    inline bool constantTimeEqual(std::string_view a, std::string_view b) { return a.size() == b.size() && CRYPTO_memcmp(a.data(), b.data(), a.size()) == 0; }
+
 }
 
-#endif // TCV_CRYPTO_CRYPTO
+#endif // ZCT_SLMS_CRYPTO_CRYPTO

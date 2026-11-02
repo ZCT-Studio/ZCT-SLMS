@@ -1,335 +1,59 @@
-# TingCloudVerifier
+# ZCT-SLMS
 
-一个基于 **Drogon + SQLite + OpenSSL** 的多平台软件授权验证服务端，支持卡密生成、设备/IP 绑定、AES256-GCM 加密传输、HMAC-SHA256 签名校验、可选客户端密钥/公告/版本管理，以及多架构多平台发布流水线。
-
-> 项目早期，持续迭代中。API 变更会在 GitHub Releases 里说明。
-
-## 特性
-
-- **三种授权角色**：ADMIN（超级管理员）、OWNER（应用所有者）、SUBUSER（子用户/团队成员）
-- **多应用管理**：每个 OWNER 可创建多个独立 APP，APPID 全局唯一
-- **卡密系统**：创建、封禁/解封、重置时间、延长时长、删除、自由卡密类型
-- **多种绑定模式**：NONE / IP / DEVICE / IP_AND_DEVICE（卡密可与任意 APP 不同）
-- **可选加密传输**：按 APP 粒度配置请求/响应加密（AES256-GCM / BASE64 / HEX）
-- **可选 HMAC-SHA256 签名校验**：按 APP 粒度开启，timestamp + nonce 防重放
-- **客户端密钥下发**：timestamp / nonce / signature / encode 四要素
-- **公告系统**：OWNER 可给 APP 设置公告，客户端一键拉取
-- **版本通道**：stable / rc / canary / alpha 四默认通道，OWNER 上传版本后客户端检查更新
-- **多架构 CI**：Windows x64/x86/arm64、Linux x64/x86/arm64/armv7、macOS arm64/x64 — 9 份 artifact
+软件授权验证平台后端，提供应用、卡密、账号、工单和内容审查接口。
 
 ## 技术栈
 
-| 分类 | 选型 |
-|---|---|
-| 语言 | C++23（MSVC 19.40+ / GCC 13+ / Clang 17+） |
-| Web 框架 | Drogon 1.9 |
-| 数据库 | SQLite 3（vcpkg `unofficial-sqlite3`） |
-| 加密 | OpenSSL 3.6（AES256-GCM / SHA256 / HMAC） |
-| 密码哈希 | Argon2id（vcpkg `unofficial-argon2`） |
-| 构建系统 | CMake 4.4 + vcpkg manifest |
-| CI | GitHub Actions（matrix 9 平台） |
-| 文档 | VitePress（GitHub Pages） |
-
-## 目录结构
-
-```
-TingCloudVerifier/
-├── CMakeLists.txt
-├── vcpkg.json
-├── migrations/            # SQL 迁移脚本
-│   ├── initial.sql        # 基础表
-│   └── 003_client_security.sql
-├── config/                # 运行时配置（复制到 dist/config/）
-│   └── config.yaml
-├── src/
-│   ├── main.cpp
-│   ├── common/            # 日志、类型
-│   ├── crypto/            # AES / HMAC / SHA / Base64 / Hex
-│   ├── database/          # SQLite 封装
-│   ├── models/            # 数据结构（App / License / Session ...）
-│   ├── repositories/      # 数据访问层
-│   ├── services/          # 业务逻辑层
-│   └── api/
-│       ├── response.hpp   # 统一响应 {code, message, data}
-│       └── v1/
-│           ├── common.hpp # wrap() 中间件 / paramStr() / 加密辅助
-│           ├── auth/      # /api/v1/auth/*  登录/登出/引导
-│           ├── admin/     # /api/v1/admin/* 超级管理员
-│           ├── app/       # /api/v1/app/*   OWNER 应用管理
-│           ├── license/   # /api/v1/license/* OWNER 卡密管理
-│           ├── client/    # /api/v1/client/* 客户端 API
-│           └── register_all.hpp
-├── README.md
-├── README/
-│   └── README.en-US.md
-├── docs/                  # VitePress 文档站点
-└── .github/
-    └── workflows/
-        ├── build.yml      # 9 平台构建 + release
-        └── docs.yml       # VitePress 部署到 Pages
-```
+C++ · Drogon · OpenSSL · Argon2id · SQLite / PostgreSQL / MySQL
 
 ## 快速开始
 
-### 环境要求
+安装 Docker 后，在项目根目录执行：
 
-- **Windows**：Visual Studio 2022（MSVC 19.40+）
-- **Linux**：GCC 13+
-- **macOS**：Xcode 15.4+
-- **CMake**：4.0+
-- **vcpkg**：最新（build 时会自动 clone）
-
-### 构建
-
-```bash
-# 1. 安装构建工具（Windows: 用 PowerShell 管理员安装 OpenSSL）
-#    Linux: apt install build-essential cmake git
-#    macOS: xcode-select --install
-
-# 2. Clone 项目
-git clone --recurse-submodules https://github.com/<owner>/TingCloudVerifier.git
-cd TingCloudVerifier
-
-# 3. Configure + Build（vcpkg 会自动拉依赖）
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release -j
-
-# 4. 运行
-cd build
-./TingCloudVerifier        # Linux/macOS
-TingCloudVerifier.exe      # Windows
+```sh
+docker compose up -d --build
+docker compose logs -f verifier
 ```
 
-### 首次启动
+默认地址：`http://localhost:17112`。检查服务：
 
-```bash
-# 初始化数据库（自动执行 migrations/*.sql）
-# 引导 Admin 账户（第一次启动会在数据库里留一条 bootstrap 记录）
+```sh
+curl http://localhost:17112/api/v1/ping
 ```
 
-## 认证体系
+首次启动自动生成管理员账号和一次性密码，请从启动日志获取并完成首次设置。WebUI 默认端口为 `17316`，在前端项目中单独启动。
 
-所有 `/api/v1/admin/*` 和 `/api/v1/{app,license}/*` 请求需要 HTTP Header：
+## 配置
 
-```
-Authorization: Bearer <token>
-```
+- 本机运行默认读取 `config/config.yaml`，也可通过程序第一个参数指定配置文件。
+- Docker 默认绑定 `127.0.0.1:17112`；使用 `ZCT_SLMS_BIND_ADDRESS` 和 `ZCT_SLMS_PORT` 调整宿主机监听地址、端口。
+- 平台设置管理运行配置、SMTP 和邮件模板；安全设置管理注册、第三方登录、2FA、人机验证与权限策略。
+- Microsoft、GitHub、短信、SMTP 等服务需填写自己的凭据。通行密钥需使用 HTTPS 或 localhost。
 
-token 由 `POST /api/v1/auth/{admin|owner|subuser}/login` 返回，存储在 `sessions` 表中。
+Docker 使用 `zct_slms-config`、`zct_slms-data`、`zct_slms-logs` 卷保存配置、数据与日志。更新使用 `docker compose up -d --build`，停止使用 `docker compose down`。
 
-## 客户端安全层
+升级前备份数据库、配置与 `data/auth-master.key`；三者需配套恢复。`docker compose down -v` 会删除数据卷，不用于普通停止或升级。
 
-### 四要素
+## 本地构建
 
-所有 `/api/v1/client/*` 请求必须携带：
+安装 CMake、受支持的 C++ 工具链及 vcpkg 依赖后执行：
 
-| 参数 | 说明 |
-|---|---|
-| `appid` | APP 唯一标识 |
-| `timestamp` | Unix 秒级时间戳（默认 ±300s 窗口） |
-| `nonce` | 随机字符串，服务器侧防重放（默认同窗口内不可重复） |
-| `signature` | 可选（APP `sign_enable=1` 时必填）：HMAC-SHA256 |
-
-### 签名算法
-
-```
-canonical = METHOD + PATH + appid + timestamp + nonce + encode(optional)
-signature = HMAC_SHA256_HEX(canonical, app.secret)
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel 2
 ```
 
-### 可选请求/响应加密
+程序位于 `build/bin`（多配置生成器位于 `build/bin/Release`）。运行时保留配置与 `migrations/`，工作目录应能访问这些文件。
 
-APP 级粒度（`app.dec_mode`），所有 `/api/v1/client/*` 请求/响应同步生效：
+## 主要功能
 
-| dec_mode | 请求 encode 编码 | 响应 encode 编码 |
-|---|---|---|
-| `NONE` | 明文参数 | 明文 JSON |
-| `AES256-GCM` | base64([12B nonce][ct][16B tag]) 明文是 URL k=v | 同格式，明文是完整 JSON 响应 |
-| `BASE64` | base64(URL k=v) | base64(JSON 响应) |
-| `HEX` | hex(URL k=v) | hex(JSON 响应) |
+- 应用资料、版本、公告、签名、加密和心跳验证。
+- 卡密生成、绑定、封禁、计时、余额与兑换码。
+- 用户、子用户、管理员和支持账号及安全验证。
+- 工单、图片材料、邮件通知、内容审查与屏蔽词过滤。
 
-`dec_key`：AES256-GCM 专用，64 字符 hex（32 字节）。BASE64/HEX 不需要。
-
-> 加密在 `wrap()` 中间件里统一处理——handler 内**零加密代码**，业务逻辑与传输层完全解耦。
-
-## API 概览
-
-### 认证
-
-| Method | Path | 说明 |
-|---|---|---|
-| POST | `/api/v1/auth/bootstrap-admin` | 超级管理员引导（生产一次性） |
-| POST | `/api/v1/auth/admin/login` | Admin 登录 |
-| POST | `/api/v1/auth/owner/login` | OWNER 登录 |
-| POST | `/api/v1/auth/subuser/login` | SUBUSER 登录 |
-| POST | `/api/v1/auth/logout` | 注销当前 session |
-
-### Admin
-
-| Method | Path | 说明 |
-|---|---|---|
-| POST | `/api/v1/admin/owner/create` | 创建 OWNER 账户 |
-| POST | `/api/v1/admin/owner/balance` | 调整 OWNER 余额 |
-| GET  | `/api/v1/admin/audit/list` | 审计日志列表 |
-| POST | `/api/v1/admin/license-timer/pause` | 全局暂停卡密计时 |
-| POST | `/api/v1/admin/license-timer/resume` | 恢复卡密计时 |
-
-### APP 管理
-
-| Method | Path | 说明 |
-|---|---|---|
-| POST | `/api/v1/app/create` | 创建 APP |
-| GET  | `/api/v1/app/list` | 列出 OWNER 名下 APP |
-| POST | `/api/v1/app/delete` | 删除 APP |
-| POST | `/api/v1/app/binding` | 设置 APP 默认绑定模式 |
-| POST | `/api/v1/app/secret/regenerate` | 重新生成 HMAC secret |
-| POST | `/api/v1/app/set-decode` | 设置 dec_mode / dec_key |
-| POST | `/api/v1/app/sign-enable` | 开关签名校验 |
-| POST | `/api/v1/app/notice` | 设置/更新公告 |
-| GET  | `/api/v1/app/channel/list` | 列出 APP 的版本通道 |
-| POST | `/api/v1/app/version/create` | 上传新版本 |
-| POST | `/api/v1/app/version/latest` | 按频道查询最新版 |
-
-### 卡密
-
-| Method | Path | 说明 |
-|---|---|---|
-| POST | `/api/v1/license/create` | 创建卡密 |
-| GET  | `/api/v1/license/list` | 卡密列表（支持过滤/分页） |
-| POST | `/api/v1/license/set-time` | 调整到期时间 |
-| POST | `/api/v1/license/add-time` | 延长时长 |
-| POST | `/api/v1/license/set-type` | 修改 license_type |
-| POST | `/api/v1/license/ban` | 封禁 |
-| POST | `/api/v1/license/unban` | 解封 |
-| POST | `/api/v1/license/unbind` | 解绑设备/IP |
-| POST | `/api/v1/license/unbind-info` | 查看可解绑信息 |
-| POST | `/api/v1/license/delete` | 删除 |
-
-### 客户端（公开）
-
-所有 client API 都受四要素 + 可选加密/签名保护，**不要求 Bearer Token**。
-
-| Method | Path | 说明 |
-|---|---|---|
-| POST | `/api/v1/client/license/verify` | 激活/验证（核心接口） |
-| POST | `/api/v1/client/license/status` | 查询卡密状态 |
-| POST | `/api/v1/client/license/remaining` | 查询剩余时长 |
-| POST | `/api/v1/client/app/channels` | 获取 APP 可用版本通道 |
-| POST | `/api/v1/client/app/version` | 按频道检查最新版 |
-| POST | `/api/v1/client/app/notice` | 获取 APP 公告 |
-
-## 数据库
-
-三后端支持 — 运行时通过 `config.yaml database.type` 切换，repo/service 层零改动：
-
-| 后端 | 特点 | vcpkg feature | 本地启动方式 |
-|---|---|---|---|
-| **SQLite** (默认) | 零依赖、单文件、适合单机/嵌入式 | 默认启用 | 无需额外服务 |
-| **PostgreSQL** | 生产级、并发好、推荐多节点部署 | `postgres` | `docker run -p 5432:5432 postgres:16` |
-| **MySQL / MariaDB** | 广泛使用、生态成熟 | `mysql` | `docker run -p 3306:3306 mysql:8.4` |
-
-### 启用可选后端
-
-```bash
-# PostgreSQL
-vcpkg install tingcloudverifier[postgres]
-
-# MySQL
-vcpkg install tingcloudverifier[mysql]
-
-# 两个都装 (一次编进去, 运行时二选一)
-vcpkg install tingcloudverifier[postgres,mysql]
-```
-
-然后在 `config/config.yaml` 里切：
-
-```yaml
-# Postgres 示例
-database:
-  type: "postgresql"
-  postgresql:
-    host: "127.0.0.1"
-    port: 5432
-    dbname: "tcv"
-    user: "tcv"
-    password: "xxx"
-    sslmode: "prefer"
-
-# MySQL 示例
-database:
-  type: "mysql"
-  mysql:
-    host: "127.0.0.1"
-    port: 3306
-    dbname: "tcv"
-    user: "tcv"
-    password: "xxx"
-    connect_timeout_sec: 10
-```
-
-### Migration 目录结构
-
-```
-migrations/
-├── sqlite/      ← SQLite 方言 SQL (INTEGER PRIMARY KEY AUTOINCREMENT, strftime, INSERT OR IGNORE)
-├── pgsql/       ← PostgreSQL 方言 (BIGSERIAL, EXTRACT(EPOCH FROM NOW()), ON CONFLICT DO NOTHING)
-├── mysql/       ← MySQL 方言 (BIGINT AUTO_INCREMENT, UNIX_TIMESTAMP(), INSERT IGNORE)
-└── 001_initial.sql  ← legacy fallback (MigrationRunner 找不到 backend dir 时使用)
-```
-
-后端切换后 MigrationRunner 自动选对应目录。不存在时 fallback 到根目录（WARN 提示）。
-
-### 内部架构
-
-```cpp
-IDatabase (纯虚接口)
-├── SqliteDatabase     — sqlite3 C API
-├── PgsqlDatabase      — libpq C API + adaptParams(? → $1 $2 ...)
-└── MysqlDatabase      — libmysqlclient prepared statements
-
-Database::instance()    — 门面类, repo/service 层零改动
-```
-
-### 业务主表（三后端共用）
-
-```
-apps           — 应用（APPID 全局唯一，有 dec_mode/dec_key/sign_enable/notice）
-licenses       — 卡密（含绑定信息：IP hash / device hash / 解绑次数）
-sessions       — 用户会话（admin/owner/subuser 统一存储）
-update_channels — 版本通道（APP 创建时自动建 stable/rc/canary/alpha 四条）
-nonces         — 防重放 nonce（APPID + nonce 唯一）
-ip_whitelist   — LOCAL 安全等级白名单
-audit_logs     — 审计日志
-schema_migrations — 版本控制（MigrationRunner 自动建）
-```
-
-## 构建产物
-
-每个 Release 自动包含 9 份独立归档，目录结构统一：
-
-```
-TingCloudVerifier-<arch>-<os>/
-├── TingCloudVerifier(.exe)
-├── config/
-├── migrations/
-├── README/
-│   ├── README.zh-CN.md      # 根目录 README.md 改名
-│   └── README.en-US.md      # 英文 README
-└── LICENSE.TXT
-```
-
-## 路线图
-
-- [ ] Subuser 团队协作（OWNER 把卡密分配给 SUBUSER）
-- [ ] 多节点部署 + Redis 存储 nonce（替代 SQLite）
-- [ ] 客户端 SDK（C++ / Go / C# 封装）
-- [ ] Web 控制台（Vue + Drogon 后端）
-- [ ] Prometheus metrics + OpenTelemetry 接入
+接口统一使用 `/api/v1/`。独立文档站与 GitHub Pages 部署暂时移除。
 
 ## 许可证
 
-Apache License 2.0 — 见 [LICENSE](./LICENSE)。
-
----
-
-[English version](./README/README.en-US.md) · [完整 API 文档](https://<owner>.github.io/TingCloudVerifier/)
+见 [LICENSE](LICENSE)。

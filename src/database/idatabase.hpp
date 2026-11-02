@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/10/3.
 //
 
-#ifndef TCV_DATABASE_IDATABASE
-#define TCV_DATABASE_IDATABASE
+#ifndef ZCT_SLMS_DATABASE_IDATABASE
+#define ZCT_SLMS_DATABASE_IDATABASE
 
 #include <exception>
 #include <fstream>
@@ -30,7 +30,7 @@
 #include <utility>
 #include <vector>
 
-namespace tcv::db {
+namespace zct_slms::db {
 
     class SQLException : public std::runtime_error {
     public:
@@ -143,4 +143,4 @@ namespace tcv::db {
     }
 }
 
-#endif // TCV_DATABASE_IDATABASE
+#endif // ZCT_SLMS_DATABASE_IDATABASE

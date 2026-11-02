@@ -18,13 +18,14 @@
 
 
 
-#ifndef TCV_REPOSITORIES_USER_APP_REPO
+#ifndef ZCT_SLMS_REPOSITORIES_USER_APP_REPO
 
-#define TCV_REPOSITORIES_USER_APP_REPO
+#define ZCT_SLMS_REPOSITORIES_USER_APP_REPO
 
 
 
 #include <utility>
+#include <functional>
 
 #include <optional>
 
@@ -48,13 +49,14 @@
 
 
 
-namespace tcv::repo {
+namespace zct_slms::repo {
+    inline std::function<void(const std::string&)> validatePublicText=[](const std::string&){};
 
     namespace AdminRepo {
 
-        inline std::optional<tcv::models::Admin> findByUsername(const std::string& u) {
+        inline std::optional<zct_slms::models::Admin> findByUsername(const std::string& u) {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM admins WHERE username = ?",
 
@@ -66,7 +68,7 @@ namespace tcv::repo {
 
             auto r = rows[0];
 
-            tcv::models::Admin a;
+            zct_slms::models::Admin a;
 
             a.id = getInt(r, "id");
 
@@ -92,9 +94,9 @@ namespace tcv::repo {
 
 
 
-        inline std::optional<tcv::models::Admin> findById(int64_t id) {
+        inline std::optional<zct_slms::models::Admin> findById(int64_t id) {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM admins WHERE id = ?",
 
@@ -106,7 +108,7 @@ namespace tcv::repo {
 
             auto r = rows[0];
 
-            tcv::models::Admin a;
+            zct_slms::models::Admin a;
 
             a.id = getInt(r, "id");
 
@@ -146,7 +148,7 @@ namespace tcv::repo {
 
         ) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "INSERT INTO admins(username, password_hash, salt, display_name, created_at, updated_at, status)"
 
@@ -166,7 +168,7 @@ namespace tcv::repo {
 
             );
 
-            return tcv::db::Database::instance().lastInsertId();
+            return zct_slms::db::Database::instance().lastInsertId();
 
         }
 
@@ -174,7 +176,7 @@ namespace tcv::repo {
 
         inline void updateLastLogin(int64_t id, int64_t now) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE admins SET last_login_at = ? WHERE id = ?",
 
@@ -198,9 +200,9 @@ namespace tcv::repo {
 
     namespace UserRepo {
 
-        inline std::optional<tcv::models::User> findByUsername(const std::string& u) {
+        inline std::optional<zct_slms::models::User> findByUsername(const std::string& u) {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM users WHERE username = ?",
 
@@ -212,7 +214,7 @@ namespace tcv::repo {
 
             auto r = rows[0];
 
-            tcv::models::User user;
+            zct_slms::models::User user;
 
             user.id = getInt(r, "id");
 
@@ -242,9 +244,9 @@ namespace tcv::repo {
 
 
 
-        inline std::optional<tcv::models::User> findById(int64_t id) {
+        inline std::optional<zct_slms::models::User> findById(int64_t id) {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM users WHERE id = ?",
 
@@ -256,7 +258,7 @@ namespace tcv::repo {
 
             auto r = rows[0];
 
-            tcv::models::User user;
+            zct_slms::models::User user;
 
             user.id = getInt(r, "id");
 
@@ -302,11 +304,12 @@ namespace tcv::repo {
 
         ) {
 
-            tcv::db::Database::instance().execParams(
+            validatePublicText(username);validatePublicText(display);
+            zct_slms::db::Database::instance().execParams(
 
                 "INSERT INTO users(username, password_hash, salt, display_name, balance, expires_at, status, created_by, created_at, updated_at)"
 
-                " VALUES (?, ?, ?, ?, -1, -1, 1, NULLIF(?,0), ?, ?)",
+                " VALUES (?, ?, ?, ?, 0, -1, 1, NULLIF(?,0), ?, ?)",
 
                 username,
 
@@ -324,7 +327,7 @@ namespace tcv::repo {
 
             );
 
-            return tcv::db::Database::instance().lastInsertId();
+            return zct_slms::db::Database::instance().lastInsertId();
 
         }
 
@@ -332,7 +335,7 @@ namespace tcv::repo {
 
         inline void addBalance(int64_t id, int64_t delta, int64_t now) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE users SET balance = balance + ?, updated_at = ? WHERE id = ?",
 
@@ -350,7 +353,7 @@ namespace tcv::repo {
 
         inline void setBalance(int64_t id, int64_t value, int64_t now) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE users SET balance = ?, updated_at = ? WHERE id = ?",
 
@@ -368,7 +371,7 @@ namespace tcv::repo {
 
         inline void setExpires(int64_t id, int64_t expires_at, int64_t now) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE users SET expires_at = ?, updated_at = ? WHERE id = ?",
 
@@ -388,7 +391,7 @@ namespace tcv::repo {
 
             // 注意：调用者必须已在 transaction 中（避免 SQLite 嵌套 BEGIN）
 
-            auto cur = tcv::db::Database::instance().queryScalar(
+            auto cur = zct_slms::db::Database::instance().queryScalar(
 
                 "SELECT balance FROM users WHERE id = ?",
 
@@ -408,7 +411,7 @@ namespace tcv::repo {
 
             int64_t now = std::time(nullptr);
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE users SET balance = ?, updated_at = ? WHERE id = ?",
 
@@ -436,9 +439,9 @@ namespace tcv::repo {
 
     namespace AppRepo {
 
-        inline std::optional<tcv::models::App> findByAppid(const std::string& appid) {
+        inline std::optional<zct_slms::models::App> findByAppid(const std::string& appid) {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps WHERE appid = ?",
 
@@ -450,7 +453,7 @@ namespace tcv::repo {
 
             auto r = rows[0];
 
-            tcv::models::App a;
+            zct_slms::models::App a;
 
             a.id = getInt(r, "id");
 
@@ -488,9 +491,9 @@ namespace tcv::repo {
 
 
 
-        inline std::optional<tcv::models::App> findById(int64_t id) {
+        inline std::optional<zct_slms::models::App> findById(int64_t id) {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps WHERE id = ?",
 
@@ -502,7 +505,7 @@ namespace tcv::repo {
 
             auto r = rows[0];
 
-            tcv::models::App a;
+            zct_slms::models::App a;
 
             a.id = getInt(r, "id");
 
@@ -558,7 +561,7 @@ namespace tcv::repo {
 
         ) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "INSERT INTO apps(owner_id, appid, name, description, secret, binding_mode, status, created_at, updated_at)"
 
@@ -582,7 +585,7 @@ namespace tcv::repo {
 
             );
 
-            return tcv::db::Database::instance().lastInsertId();
+            return zct_slms::db::Database::instance().lastInsertId();
 
         }
 
@@ -590,7 +593,7 @@ namespace tcv::repo {
 
         inline void updateAppSecret(int64_t id, const std::string& new_secret, int64_t now) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE apps SET secret = ?, updated_at = ? WHERE id = ?",
 
@@ -608,7 +611,7 @@ namespace tcv::repo {
 
         inline void updateBindingMode(int64_t id, const std::string& mode, int64_t now) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE apps SET binding_mode = ?, updated_at = ? WHERE id = ?",
 
@@ -624,7 +627,7 @@ namespace tcv::repo {
 
 
         inline void updateDecodeMode(int64_t id, const std::string& mode, const std::string& key, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE apps SET dec_mode = ?, dec_key = ?, updated_at = ? WHERE id = ?",
                 mode,
                 key,
@@ -634,7 +637,7 @@ namespace tcv::repo {
         }
 
         inline void updateSignEnable(int64_t id, int enable, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE apps SET sign_enable = ?, updated_at = ? WHERE id = ?",
                 enable,
                 now,
@@ -643,7 +646,7 @@ namespace tcv::repo {
         }
 
         inline void updateNotice(int64_t id, const std::string& notice, int64_t now) {
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
                 "UPDATE apps SET notice = ?, updated_at = ? WHERE id = ?",
                 notice,
                 now,
@@ -658,7 +661,7 @@ namespace tcv::repo {
 
         inline void setStatus(int64_t id, int status, int64_t now) {
 
-            tcv::db::Database::instance().execParams(
+            zct_slms::db::Database::instance().execParams(
 
                 "UPDATE apps SET status = ?, updated_at = ? WHERE id = ?",
 
@@ -674,9 +677,9 @@ namespace tcv::repo {
 
 
 
-        inline std::vector<tcv::models::App> listByOwner(int64_t owner_id) {
+        inline std::vector<zct_slms::models::App> listByOwner(int64_t owner_id) {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps WHERE owner_id = ? ORDER BY id DESC",
 
@@ -684,11 +687,11 @@ namespace tcv::repo {
 
             );
 
-            std::vector<tcv::models::App> out;
+            std::vector<zct_slms::models::App> out;
 
             for (auto& r : rows) {
 
-                tcv::models::App a;
+                zct_slms::models::App a;
 
                 a.id = getInt(r, "id");
 
@@ -732,25 +735,25 @@ namespace tcv::repo {
 
         inline void removeById(int64_t id) {
 
-            tcv::db::Database::instance().execParams("DELETE FROM apps WHERE id = ?", id);
+            zct_slms::db::Database::instance().execParams("DELETE FROM apps WHERE id = ?", id);
 
         }
 
 
 
-        inline std::vector<tcv::models::App> listAll() {
+        inline std::vector<zct_slms::models::App> listAll() {
 
-            auto rows = tcv::db::Database::instance().queryParams(
+            auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps ORDER BY id DESC"
 
             );
 
-            std::vector<tcv::models::App> out;
+            std::vector<zct_slms::models::App> out;
 
             for (auto& r : rows) {
 
-                tcv::models::App a;
+                zct_slms::models::App a;
 
                 a.id = getInt(r, "id");
 
@@ -794,5 +797,5 @@ namespace tcv::repo {
 
 
 
-#endif // TCV_REPOSITORIES_USER_APP_REPO
+#endif // ZCT_SLMS_REPOSITORIES_USER_APP_REPO
 

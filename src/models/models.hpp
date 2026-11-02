@@ -16,13 +16,13 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_MODELS_MODELS
-#define TCV_MODELS_MODELS
+#ifndef ZCT_SLMS_MODELS_MODELS
+#define ZCT_SLMS_MODELS_MODELS
 
 #include <optional>
 #include <string>
 
-namespace tcv::models {
+namespace zct_slms::models {
     struct Admin {
         int64_t id = 0;
         std::string username;
@@ -170,4 +170,4 @@ namespace tcv::models {
     };
 }
 
-#endif // TCV_MODELS_MODELS
+#endif // ZCT_SLMS_MODELS_MODELS

@@ -10,8 +10,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_COMMON_LOGGER_HPP
-#define TCV_COMMON_LOGGER_HPP
+#ifndef ZCT_SLMS_COMMON_LOGGER_HPP
+#define ZCT_SLMS_COMMON_LOGGER_HPP
 
 #pragma push_macro("ALL")
 #pragma push_macro("ERROR")
@@ -36,6 +36,7 @@
 #endif
 
 #include <cctype>
+#include <atomic>
 #include <format>
 #include <mutex>
 #include <optional>
@@ -48,8 +49,8 @@
 #include "common/formatters.hpp"
 #include "common/executors.hpp"
 
-namespace tcv {
-    using LoogerFormatter = logging::tcv_formatter;
+namespace zct_slms {
+    using LoogerFormatter = logging::zct_slms_formatter;
     using LoggerSyncT = ZCLibLog::LoggerSync<LoogerFormatter>;
     using LoggerAsyncT = ZCLibLog::LoggerAsync<LoogerFormatter>;
 
@@ -154,13 +155,13 @@ namespace tcv {
         const auto lv = logLevelFromString(level);
         ZCLibLog::LogLevelCfg level_cfg(lv, ZCLibLog::LogLevel::OFF);
 
-        auto ex = ZCLibLog::executor::make<tcv::logging::tcv_executor>(file_path, false);
+        auto ex = ZCLibLog::executor::make<zct_slms::logging::zct_slms_executor>(file_path, false);
         std::initializer_list<ZCLibLog::executor> executors{std::move(ex)};
 
         if (async) {
-            loggerStorage().emplace(std::in_place_index<1>, tcv::constants::PROJECT_NAME, executors, level_cfg);
+            loggerStorage().emplace(std::in_place_index<1>, zct_slms::constants::PROJECT_NAME, executors, level_cfg);
         } else {
-            loggerStorage().emplace(std::in_place_index<0>, tcv::constants::PROJECT_NAME, executors, level_cfg);
+            loggerStorage().emplace(std::in_place_index<0>, zct_slms::constants::PROJECT_NAME, executors, level_cfg);
         }
     }
 
@@ -170,14 +171,25 @@ namespace tcv {
         if (!s) {
             s.emplace(
                 std::in_place_index<0>,
-                tcv::constants::PROJECT_NAME,
+                zct_slms::constants::PROJECT_NAME,
                 std::initializer_list<ZCLibLog::executor>{
-                    ZCLibLog::executor::make<tcv::logging::tcv_executor>(std::string{}, true)
+                    ZCLibLog::executor::make<zct_slms::logging::zct_slms_executor>(std::string{}, true)
                 }
             );
         }
         return Logger(&*s);
     }
+    inline std::atomic<ZCLibLog::LogLevel> apiLogLevel{ZCLibLog::LogLevel::DEBUG};
+    template<class... Args>inline void apiLog(std::format_string<Args...> format,Args&&... args){
+        switch(apiLogLevel.load()){
+            case ZCLibLog::LogLevel::TRACE:logger().TRACE(format,std::forward<Args>(args)...);break;
+            case ZCLibLog::LogLevel::INFO:logger().INFO(format,std::forward<Args>(args)...);break;
+            case ZCLibLog::LogLevel::WARN:logger().WARN(format,std::forward<Args>(args)...);break;
+            case ZCLibLog::LogLevel::ERROR:logger().ERROR(format,std::forward<Args>(args)...);break;
+            case ZCLibLog::LogLevel::OFF:break;
+            default:logger().DEBUG(format,std::forward<Args>(args)...);break;
+        }
+    }
 }
 
-#endif // TCV_COMMON_LOGGER_HPP
+#endif // ZCT_SLMS_COMMON_LOGGER_HPP

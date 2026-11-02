@@ -1,5 +1,5 @@
--- TingCloudVerifier - Initial Schema
--- Version 1.0.0
+-- ZCT-SLMS - Initial Schema
+-- Version 2.0.0
 
 CREATE TABLE IF NOT EXISTS admins
 (
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users
     password_hash TEXT    NOT NULL,
     salt          TEXT    NOT NULL,
     display_name  TEXT,
-    balance       INTEGER NOT NULL DEFAULT -1,
+    balance       INTEGER NOT NULL DEFAULT 0,
     expires_at    INTEGER NOT NULL DEFAULT -1,
     status        INTEGER NOT NULL DEFAULT 1,
     created_by    INTEGER,

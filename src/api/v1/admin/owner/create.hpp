@@ -16,32 +16,32 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_ADMIN_OWNER_CREATE
-#define TCV_API_V1_ADMIN_OWNER_CREATE
+#ifndef ZCT_SLMS_API_V1_ADMIN_OWNER_CREATE
+#define ZCT_SLMS_API_V1_ADMIN_OWNER_CREATE
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::admin::owner::create {
+namespace zct_slms::inside::api::v1::admin::owner::create {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const auto username = tcv::inside::api::v1::common::paramStr(req, "username");
-        const auto password = tcv::inside::api::v1::common::paramStr(req, "password");
-        const auto display = tcv::inside::api::v1::common::paramStr(req, "display_name");
-        const int64_t admin_id = tcv::inside::api::v1::common::paramI64(req, "_admin_id", 0);
+        const auto username = zct_slms::inside::api::v1::common::paramStr(req, "username");
+        const auto password = zct_slms::inside::api::v1::common::paramStr(req, "password");
+        const auto display = zct_slms::inside::api::v1::common::paramStr(req, "display_name");
+        const int64_t admin_id = zct_slms::inside::api::v1::common::paramI64(req, "_admin_id", 0);
         if (username.empty() || password.empty()) {
             cb(
                 drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(tcv::api::ErrorCode::VALIDATION, "参数不完整")
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::VALIDATION, "参数不完整")
                 )
             );
             return;
         }
         try {
-            auto hp = tcv::service::hashPassword(password);
-            int64_t id = tcv::repo::UserRepo::insert(username, hp.hash, hp.salt, display, std::time(nullptr), admin_id);
-            tcv::repo::AuditRepo::log(
+            auto hp = zct_slms::service::hashPassword(password);
+            int64_t id = zct_slms::repo::UserRepo::insert(username, hp.hash, hp.salt, display, std::time(nullptr), admin_id);
+            zct_slms::repo::AuditRepo::log(
                 "ADMIN",
                 admin_id,
                 "CreateOwner",
@@ -49,17 +49,17 @@ namespace tcv::inside::api::v1::admin::owner::create {
                 id,
                 "",
                 "success",
-                tcv::inside::api::v1::common::clientIp(req),
+                zct_slms::inside::api::v1::common::clientIp(req),
                 "{}",
                 std::time(nullptr)
             );
             Json::Value v;
             v["user_id"] = id;
-            cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(v)));
+            cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
         } catch (const std::exception& e) {
-            cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeFail(1003, e.what())));
+            cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(1003, e.what())));
         }
     }
 }
 
-#endif // TCV_API_V1_ADMIN_OWNER_CREATE
+#endif // ZCT_SLMS_API_V1_ADMIN_OWNER_CREATE

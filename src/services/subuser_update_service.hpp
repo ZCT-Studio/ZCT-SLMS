@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_SERVICES_SUBUSER_UPDATE_SERVICE
-#define TCV_SERVICES_SUBUSER_UPDATE_SERVICE
+#ifndef ZCT_SLMS_SERVICES_SUBUSER_UPDATE_SERVICE
+#define ZCT_SLMS_SERVICES_SUBUSER_UPDATE_SERVICE
 
 #include "common/types.hpp"
 #include <string>
@@ -26,9 +26,9 @@
 #include <json/json.h>
 #include <format>
 
-namespace tcv::service {
+namespace zct_slms::service {
     namespace SubUserService {
-        inline tcv::common::ResultOf<int64_t> create(
+        inline zct_slms::common::ResultOf<int64_t> create(
             int64_t parent_id,
             const std::string& username,
             const std::string& password,
@@ -40,7 +40,7 @@ namespace tcv::service {
                 "SELECT id FROM sub_users WHERE username = ?",
                 username
             );
-            if (!existing.empty()) return tcv::common::ResultOf<int64_t>::fail(1001, "用户名已存在");
+            if (!existing.empty()) return zct_slms::common::ResultOf<int64_t>::fail(1001, "用户名已存在");
 
             auto [hash, salt] = hashPassword(password);
             int64_t now = std::time(nullptr);
@@ -72,51 +72,51 @@ namespace tcv::service {
                 "{}",
                 now
             );
-            return tcv::common::ResultOf<int64_t>::ok(id);
+            return zct_slms::common::ResultOf<int64_t>::ok(id);
         }
 
-        inline tcv::common::Result setQuota(int64_t subuser_id, int64_t limit) {
+        inline zct_slms::common::Result setQuota(int64_t subuser_id, int64_t limit) {
             db::Database::instance().execParams(
                 "UPDATE sub_users SET quota_limit = ?, updated_at = ? WHERE id = ?",
                 limit,
                 static_cast<int64_t>(std::time(nullptr)),
                 subuser_id
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result setExpires(int64_t subuser_id, int64_t expires_at) {
+        inline zct_slms::common::Result setExpires(int64_t subuser_id, int64_t expires_at) {
             db::Database::instance().execParams(
                 "UPDATE sub_users SET expires_at = ?, updated_at = ? WHERE id = ?",
                 expires_at,
                 static_cast<int64_t>(std::time(nullptr)),
                 subuser_id
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result deleteSubUser(int64_t id) {
+        inline zct_slms::common::Result deleteSubUser(int64_t id) {
             db::Database::instance().execParams("DELETE FROM sub_users WHERE id = ?", id);
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result assignApp(int64_t subuser_id, int64_t app_id) {
+        inline zct_slms::common::Result assignApp(int64_t subuser_id, int64_t app_id) {
             db::Database::instance().execParams(
                 "INSERT OR IGNORE INTO user_app_permissions(sub_user_id, app_id, created_at) VALUES (?,?,?)",
                 subuser_id,
                 app_id,
                 static_cast<int64_t>(std::time(nullptr))
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
-        inline tcv::common::Result unassignApp(int64_t subuser_id, int64_t app_id) {
+        inline zct_slms::common::Result unassignApp(int64_t subuser_id, int64_t app_id) {
             db::Database::instance().execParams(
                 "DELETE FROM user_app_permissions WHERE sub_user_id = ? AND app_id = ?",
                 subuser_id,
                 app_id
             );
-            return tcv::common::Result::ok();
+            return zct_slms::common::Result::ok();
         }
 
         inline std::vector<int64_t> listAssignedApps(int64_t subuser_id) {
@@ -131,13 +131,13 @@ namespace tcv::service {
     } // namespace SubUserService
 
     namespace UpdateService {
-        inline tcv::common::ResultOf<int64_t> createChannel(
+        inline zct_slms::common::ResultOf<int64_t> createChannel(
             int64_t app_id,
             const std::string& channel,
             const std::string& description
         ) {
             if (!repo::AppRepo::findById(app_id)) {
-                return tcv::common::ResultOf<int64_t>::fail(3001, "APP 不存在");
+                return zct_slms::common::ResultOf<int64_t>::fail(3001, "APP 不存在");
             }
             db::Database::instance().execParams(
                 "INSERT OR IGNORE INTO update_channels(app_id, channel, description, created_at)"
@@ -152,11 +152,11 @@ namespace tcv::service {
                 app_id,
                 channel
             );
-            if (rows.empty()) return tcv::common::ResultOf<int64_t>::fail(1003, "创建频道失败");
-            return tcv::common::ResultOf<int64_t>::ok(repo::getInt(rows[0], "id"));
+            if (rows.empty()) return zct_slms::common::ResultOf<int64_t>::fail(1003, "创建频道失败");
+            return zct_slms::common::ResultOf<int64_t>::ok(repo::getInt(rows[0], "id"));
         }
 
-        inline tcv::common::ResultOf<int64_t> createVersion(
+        inline zct_slms::common::ResultOf<int64_t> createVersion(
             int64_t channel_id,
             const std::string& version,
             const std::string& download_url,
@@ -180,7 +180,7 @@ namespace tcv::service {
                 minimum_version,
                 now
             );
-            return tcv::common::ResultOf<int64_t>::ok(db::Database::instance().lastInsertId());
+            return zct_slms::common::ResultOf<int64_t>::ok(db::Database::instance().lastInsertId());
         }
 
         inline std::vector<Json::Value> listChannels(const std::string& appid) {
@@ -206,7 +206,7 @@ namespace tcv::service {
             return out;
         }
 
-        inline Json::Value getLatest(const std::string& appid, const std::string& channel = "stable") {
+        inline Json::Value getLatest(const std::string& appid, const std::string& channel = "release") {
             Json::Value out;
             out["found"] = false;
             auto app = repo::AppRepo::findByAppid(appid);
@@ -234,4 +234,4 @@ namespace tcv::service {
     }
 }
 
-#endif // TCV_SERVICES_SUBUSER_UPDATE_SERVICE
+#endif // ZCT_SLMS_SERVICES_SUBUSER_UPDATE_SERVICE

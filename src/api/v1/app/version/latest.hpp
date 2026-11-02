@@ -16,34 +16,34 @@
 // Created by wanjiangzhi on 2026/10/2.
 //
 
-#ifndef TCV_API_V1_APP_VERSION_LATEST
-#define TCV_API_V1_APP_VERSION_LATEST
+#ifndef ZCT_SLMS_API_V1_APP_VERSION_LATEST
+#define ZCT_SLMS_API_V1_APP_VERSION_LATEST
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::app::version::latest {
+namespace zct_slms::inside::api::v1::app::version::latest {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const auto appid = tcv::inside::api::v1::common::paramStr(req, "appid");
-        const auto channel = tcv::inside::api::v1::common::paramStr(req, "channel", "stable");
+        const auto appid = zct_slms::inside::api::v1::common::paramStr(req, "appid");
+        const auto channel = zct_slms::inside::api::v1::common::paramStr(req, "channel", "release");
 
-        auto app = tcv::repo::AppRepo::findByAppid(appid);
+        auto app = zct_slms::repo::AppRepo::findByAppid(appid);
         if (!app) {
             cb(drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeFail(tcv::api::ErrorCode::APP_NOT_FOUND, "APPID 不存在")));
+                zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "APPID 不存在")));
             return;
         }
 
-        auto v = tcv::service::UpdateService::getLatest(appid, channel);
+        auto v = zct_slms::service::UpdateService::getLatest(appid, channel);
         if (!v["found"].asBool()) {
             cb(drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeFail(tcv::api::ErrorCode::NOT_FOUND, "该频道暂无版本")));
+                zct_slms::api::makeFail(zct_slms::api::ErrorCode::NOT_FOUND, "该频道暂无版本")));
             return;
         }
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(v)));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // TCV_API_V1_APP_VERSION_LATEST
+#endif // ZCT_SLMS_API_V1_APP_VERSION_LATEST

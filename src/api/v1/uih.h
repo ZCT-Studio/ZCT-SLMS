@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/27.
 //
 
-#ifndef TCV_API_V1_UIH
-#define TCV_API_V1_UIH
+#ifndef ZCT_SLMS_API_V1_UIH
+#define ZCT_SLMS_API_V1_UIH
 
 #include <exception>
 #include <functional>
@@ -36,4 +36,4 @@
 #include "services/security_service.hpp"
 #include "services/subuser_update_service.hpp"
 
-#endif //TCV_API_V1_UIH
+#endif //ZCT_SLMS_API_V1_UIH

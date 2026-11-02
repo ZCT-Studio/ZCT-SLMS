@@ -16,28 +16,29 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_CONFIG_APP_CONFIG
-#define TCV_CONFIG_APP_CONFIG
+#ifndef ZCT_SLMS_CONFIG_APP_CONFIG
+#define ZCT_SLMS_CONFIG_APP_CONFIG
 
 #include <exception>
+#include <filesystem>
 #include <string>
 #include <yaml-cpp/yaml.h>
 #include "common/logger.hpp"
 
-namespace tcv {
+namespace zct_slms {
     struct DatabaseConfig {
         // sqlite | postgresql | mysql
         std::string type = "sqlite";
 
         // ── SQLite ──
-        std::string sqlite_path = "./tcv.db";
+        std::string sqlite_path = "./zct_slms.db";
 
         // ── PostgreSQL ──
         struct Pgsql {
             std::string host = "127.0.0.1";
             int port = 5432;
-            std::string dbname = "tcv";
-            std::string user = "tcv";
+            std::string dbname = "zct_slms";
+            std::string user = "zct_slms";
             std::string password;
             // 可选: SSL 模式 disable / prefer / require / verify-ca / verify-full
             std::string sslmode = "prefer";
@@ -47,17 +48,18 @@ namespace tcv {
         struct Mysql {
             std::string host = "127.0.0.1";
             int port = 3306;
-            std::string dbname = "tcv";
-            std::string user = "tcv";
+            std::string dbname = "zct_slms";
+            std::string user = "zct_slms";
             std::string password;
             int connect_timeout_sec = 10;
         } mysql;
     };
 
     struct SecurityConfig {
+        bool app_secret_reveal_allowed = true;
         std::string admin_security_level = "LAN"; // LOCAL/LAN/PUBLIC
         int replay_window_seconds = 60;
-        int session_ttl_seconds = 1800;
+        int session_ttl_seconds = 259200;
         int temp_token_ttl_seconds = 3600;
         std::string password_hasher = "argon2id";
     };
@@ -72,9 +74,10 @@ namespace tcv {
     };
 
     struct LoggingConfig {
+        std::string api_level = "DEBUG";
         std::string level = "INFO";
         bool async = true;
-        std::string file_path = "./logs/tcv.log";
+        std::string file_path = "./logs/zct_slms.log";
     };
 
     struct ServerConfig {
@@ -83,7 +86,7 @@ namespace tcv {
         // IPv6 监听地址, "" 表示不监听 IPv6
         std::string ipv6_host = "::";
         // 监听端口 (IPv4/IPv6 共用)
-        int port = 10211;
+        int port = 17112;
     };
 
     struct LicenseConfig {
@@ -98,6 +101,7 @@ namespace tcv {
         }
 
         bool load(const std::string& path) {
+            config_path_=std::filesystem::absolute(path).string();
             try {
                 YAML::Node root = YAML::LoadFile(path);
 
@@ -153,6 +157,7 @@ namespace tcv {
                 }
 
                 if (auto n = root["security"]) {
+                    sec_.app_secret_reveal_allowed=n["app_secret_reveal_allowed"].as<bool>(true);
                     sec_.admin_security_level = n["admin_security_level"].as<std::string>(sec_.admin_security_level);
                     sec_.replay_window_seconds = n["replay_window_seconds"].as<int>(sec_.replay_window_seconds);
                     sec_.session_ttl_seconds = n["session_ttl_seconds"].as<int>(sec_.session_ttl_seconds);
@@ -170,6 +175,7 @@ namespace tcv {
                 }
 
                 if (auto n = root["logging"]) {
+                    log_.api_level = n["api_level"].as<std::string>(log_.api_level);
                     log_.level = n["level"].as<std::string>(log_.level);
                     log_.async = n["async"].as<bool>(log_.async);
                     log_.file_path = n["file_path"].as<std::string>(log_.file_path);
@@ -181,7 +187,7 @@ namespace tcv {
 
                 return true;
             } catch (const std::exception& e) {
-                tcv::logger().ERROR("Failed to load config from {}: {}", path, e.what());
+                zct_slms::logger().ERROR("Failed to load config from {}: {}", path, e.what());
                 return false;
             }
         }
@@ -193,9 +199,11 @@ namespace tcv {
         [[nodiscard]] const SecurityConfig& security() const { return sec_; }
         [[nodiscard]] const RateLimitConfig& rateLimit() const { return rl_; }
         [[nodiscard]] const LoggingConfig& logging() const { return log_; }
+        [[nodiscard]] const std::string& configPath() const { return config_path_; }
         [[nodiscard]] const LicenseConfig& license() const { return lic_; }
 
     private:
+        std::string config_path_;
         ServerConfig server_;
         DatabaseConfig db_;
         SecurityConfig sec_;
@@ -205,4 +213,4 @@ namespace tcv {
     };
 }
 
-#endif // TCV_CONFIG_APP_CONFIG
+#endif // ZCT_SLMS_CONFIG_APP_CONFIG

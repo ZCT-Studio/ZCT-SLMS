@@ -16,42 +16,42 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_CLIENT_LICENSE_REMAINING
-#define TCV_API_V1_CLIENT_LICENSE_REMAINING
+#ifndef ZCT_SLMS_API_V1_CLIENT_LICENSE_REMAINING
+#define ZCT_SLMS_API_V1_CLIENT_LICENSE_REMAINING
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::client::license::remaining {
+namespace zct_slms::inside::api::v1::client::license::remaining {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const auto appid = tcv::inside::api::v1::common::paramStr(req, "appid");
-        const auto license_plain = tcv::inside::api::v1::common::paramStr(req, "license");
-        const auto app = tcv::repo::AppRepo::findByAppid(appid);
+        const auto appid = zct_slms::inside::api::v1::common::paramStr(req, "appid");
+        const auto license_plain = zct_slms::inside::api::v1::common::paramStr(req, "license");
+        const auto app = zct_slms::repo::AppRepo::findByAppid(appid);
         if (!app) {
             cb(
                 drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(tcv::api::ErrorCode::APP_NOT_FOUND, "APPID 不存在")
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "APPID 不存在")
                 )
             );
             return;
         }
-        const auto lic = tcv::repo::LicenseRepo::findByAppAndLicense(app->id, license_plain);
+        const auto lic = zct_slms::repo::LicenseRepo::findByAppAndLicense(app->id, license_plain);
         if (!lic) {
             cb(
                 drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(tcv::api::ErrorCode::LICENSE_NOT_FOUND, "卡密不存在")
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::LICENSE_NOT_FOUND, "卡密不存在")
                 )
             );
             return;
         }
         cb(
             drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeOk(tcv::service::LicenseService::remainingOf(*lic))
+                zct_slms::api::makeOk(zct_slms::service::LicenseService::remainingOf(*lic))
             )
         );
     }
 }
 
-#endif // TCV_API_V1_CLIENT_LICENSE_REMAINING
+#endif // ZCT_SLMS_API_V1_CLIENT_LICENSE_REMAINING

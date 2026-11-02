@@ -16,51 +16,57 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_APP_LIST
-#define TCV_API_V1_APP_LIST
+#ifndef ZCT_SLMS_API_V1_APP_LIST
+#define ZCT_SLMS_API_V1_APP_LIST
 
 #include "api/v1/uih.h"
+#include "services/app_secret_policy.hpp"
 
-namespace tcv::inside::api::v1::app::list {
+namespace zct_slms::inside::api::v1::app::list {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const auto user_type = tcv::inside::api::v1::common::currentUserType(req);
-        const int64_t cur_user_id = tcv::inside::api::v1::common::currentUserId(req);
-        const bool show_secret = tcv::inside::api::v1::common::paramBool(req, "secret", false);
+        const auto user_type = zct_slms::inside::api::v1::common::currentUserType(req);
+        const int64_t cur_user_id = zct_slms::inside::api::v1::common::currentUserId(req);
 
-        std::vector<tcv::models::App> apps;
+
+        std::vector<zct_slms::models::App> apps;
         if (user_type == "ADMIN") {
-            apps = tcv::repo::AppRepo::listAll();
-            for (auto assigned = tcv::service::SubUserService::listAssignedApps(cur_user_id); auto app_id : assigned) {
-                if (auto app = tcv::repo::AppRepo::findById(app_id)) apps.push_back(*app);
+            apps = zct_slms::repo::AppRepo::listAll();
+        } else if (user_type == "SUBUSER") {
+            for (auto app_id : zct_slms::service::SubUserService::listAssignedApps(cur_user_id)) {
+                if (auto app = zct_slms::repo::AppRepo::findById(app_id)) apps.push_back(*app);
             }
         } else {
-            apps = tcv::repo::AppRepo::listByOwner(cur_user_id);
+            apps = zct_slms::repo::AppRepo::listByOwner(cur_user_id);
         }
 
         Json::Value arr(Json::arrayValue);
         for (auto& a : apps) {
             Json::Value v;
+            v["id"] = static_cast<Json::Int64>(a.id);
             v["appid"] = a.appid;
             v["name"] = a.name;
             v["description"] = a.description;
             v["binding_mode"] = a.binding_mode;
+            v["dec_mode"] = a.dec_mode;
+            v["sign_enable"] = a.sign_enable;
+            v["notice"] = a.notice;
             v["status"] = a.status;
             v["created_at"] = a.created_at;
-            if (show_secret && user_type != "SUBUSER") {
-                v["secret"] = a.secret;
-            }
+            v["secret_view_available"] = zct_slms::service::appSecretAvailable(a);
+            v["secret_repeat_allowed"] = zct_slms::service::repeatAppSecret();
 
-            auto owner = tcv::repo::UserRepo::findById(a.owner_id);
+
+            auto owner = zct_slms::repo::UserRepo::findById(a.owner_id);
             std::string creator_name = owner ? owner->username : "unknown";
             if (creator_name.empty()) creator_name = "unknown";
             if (user_type == "USER" && a.owner_id == cur_user_id) {
                 creator_name += "*";
             }
             if (user_type == "SUBUSER") {
-                auto su_rows = tcv::db::Database::instance().queryParams(
+                auto su_rows = zct_slms::db::Database::instance().queryParams(
                     "SELECT parent_id FROM sub_users WHERE id = ?", cur_user_id
                 );
                 if (!su_rows.empty()) {
@@ -71,10 +77,12 @@ namespace tcv::inside::api::v1::app::list {
                 }
             }
             v["creator"] = creator_name;
+            v["owner_id"] = static_cast<Json::Int64>(a.owner_id);
+            v["owner_username"] = owner ? owner->username : "unknown";
             arr.append(v);
         }
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(arr)));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(arr)));
     }
 }
 
-#endif // TCV_API_V1_APP_LIST
+#endif // ZCT_SLMS_API_V1_APP_LIST

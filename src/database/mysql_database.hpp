@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/10/3.
 //
 
-#ifndef TCV_DATABASE_MYSQL_DATABASE
-#define TCV_DATABASE_MYSQL_DATABASE
+#ifndef ZCT_SLMS_DATABASE_MYSQL_DATABASE
+#define ZCT_SLMS_DATABASE_MYSQL_DATABASE
 
 #include "database/idatabase.hpp"
 #include <mysql.h>
@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-namespace tcv::db {
+namespace zct_slms::db {
 
     class MysqlDatabase : public IDatabase {
     public:
@@ -279,4 +279,4 @@ namespace tcv::db {
     };
 }
 
-#endif // TCV_DATABASE_MYSQL_DATABASE
+#endif // ZCT_SLMS_DATABASE_MYSQL_DATABASE

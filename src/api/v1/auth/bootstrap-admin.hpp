@@ -16,40 +16,41 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_AUTH_BOOTSTRAP_ADMIN
-#define TCV_API_V1_AUTH_BOOTSTRAP_ADMIN
+#ifndef ZCT_SLMS_API_V1_AUTH_BOOTSTRAP_ADMIN
+#define ZCT_SLMS_API_V1_AUTH_BOOTSTRAP_ADMIN
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::auth::bootstrap_admin {
+namespace zct_slms::inside::api::v1::auth::bootstrap_admin {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const auto existing = tcv::db::Database::instance().queryScalar("SELECT COUNT(*) FROM admins");
+        const auto existing = zct_slms::db::Database::instance().queryScalar("SELECT COUNT(*) FROM admins");
         if (existing && *existing != "0") {
             cb(
                 drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(1001, "已存在管理员")
+                    zct_slms::api::makeFail(1001, "已存在管理员")
                 )
             );
             return;
         }
-        const auto username = tcv::inside::api::v1::common::paramStr(req, "username");
-        const auto password = tcv::inside::api::v1::common::paramStr(req, "password");
-        const auto display = tcv::inside::api::v1::common::paramStr(req, "display_name", "");
+        const auto username = zct_slms::inside::api::v1::common::paramStr(req, "username");
+        const auto password = zct_slms::inside::api::v1::common::paramStr(req, "password");
+        const auto display = zct_slms::inside::api::v1::common::paramStr(req, "display_name", "");
         if (username.empty() || password.size() < 4) {
             cb(
                 drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(tcv::api::ErrorCode::VALIDATION, "参数不合法")
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::VALIDATION, "参数不合法")
                 )
             );
             return;
         }
-        const auto [hash, salt] = tcv::service::hashPassword(password);
-        tcv::repo::AdminRepo::insert(username, hash, salt, display, std::time(nullptr));
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk()));
+        const auto [hash, salt] = zct_slms::service::hashPassword(password);
+        const auto admin_id = zct_slms::repo::AdminRepo::insert(username, hash, salt, display, std::time(nullptr));
+        zct_slms::repo::ConfigRepo::set("admin_initial_setup_done:" + std::to_string(admin_id), "0", std::time(nullptr));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk()));
     }
 }
 
-#endif // TCV_API_V1_AUTH_BOOTSTRAP_ADMIN
+#endif // ZCT_SLMS_API_V1_AUTH_BOOTSTRAP_ADMIN

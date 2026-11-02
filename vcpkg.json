@@ -1,5 +1,5 @@
 {
-    "name": "tingcloudverifier",
+    "name": "zct-slms",
     "version-string": "1.0.0",
     "description": "Multi-platform software licensing server (SQLite default, PostgreSQL/MySQL optional)",
     "features": {
@@ -18,7 +18,8 @@
         "sqlite3",
         "yaml-cpp",
         "openssl",
-        "argon2"
+        "argon2",
+        { "name": "curl", "default-features": false, "features": ["ssl", "non-http"] }
     ]
 }
 

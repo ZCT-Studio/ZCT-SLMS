@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_COMMON_FORMATTERS_HPP
-#define TCV_COMMON_FORMATTERS_HPP
+#ifndef ZCT_SLMS_COMMON_FORMATTERS_HPP
+#define ZCT_SLMS_COMMON_FORMATTERS_HPP
 
 #include <array>
 #include <ctime>
@@ -27,8 +27,8 @@
 
 #include "ZCLibLog/formatters/format_apis/stdcxx20format.hpp"
 
-namespace tcv::logging {
-    struct tcv_formatter : ZCLibLog::format_apis::stdcxx20format {
+namespace zct_slms::logging {
+    struct zct_slms_formatter : ZCLibLog::format_apis::stdcxx20format {
         template <typename... Args>
         static std::string do_format(
             ZCLibLog::FLogPack pack,
@@ -83,4 +83,4 @@ namespace tcv::logging {
     };
 }
 
-#endif // TCV_COMMON_FORMATTERS_HPP
+#endif // ZCT_SLMS_COMMON_FORMATTERS_HPP

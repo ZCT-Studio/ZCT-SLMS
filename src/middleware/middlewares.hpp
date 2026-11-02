@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_MIDDLEWARE_MIDDLEWARES
-#define TCV_MIDDLEWARE_MIDDLEWARES
+#ifndef ZCT_SLMS_MIDDLEWARE_MIDDLEWARES
+#define ZCT_SLMS_MIDDLEWARE_MIDDLEWARES
 
 #include <functional>
 #include <string>
@@ -31,7 +31,7 @@
 #include "services/auth_app_service.hpp"
 #include "services/security_service.hpp"
 
-namespace tcv::middleware {
+namespace zct_slms::middleware {
     class RateLimitMiddleware : public drogon::HttpMiddleware<RateLimitMiddleware, false> {
     public:
         void invoke(
@@ -39,7 +39,7 @@ namespace tcv::middleware {
             drogon::MiddlewareNextCallback&& nextCb,
             drogon::MiddlewareCallback&& mcb
         ) override {
-            auto& rl = tcv::AppConfig::instance().rateLimit();
+            auto& rl = zct_slms::AppConfig::instance().rateLimit();
             if (!rl.enabled) {
                 nextCb(nullptr);
                 return;
@@ -47,7 +47,7 @@ namespace tcv::middleware {
 
             const auto ip = req->getPeerAddr().toIp();
             const std::string key_ip = "ip:" + ip;
-            if (!tcv::service::RateLimiter::instance().tryAcquire(key_ip, rl.ip_per_sec)) {
+            if (!zct_slms::service::RateLimiter::instance().tryAcquire(key_ip, rl.ip_per_sec)) {
                 const auto resp = drogon::HttpResponse::newHttpJsonResponse(
                     api::makeFail(api::ErrorCode::RATE_LIMITED, "请求过于频繁")
                 );
@@ -67,10 +67,10 @@ namespace tcv::middleware {
             drogon::MiddlewareCallback&& mcb
         ) override {
             auto path = req->path();
-            tcv::logger().DEBUG("[MW:Bearer] path={}", path);
+            zct_slms::logger().DEBUG("[MW:Bearer] path={}", path);
             bool need = path.rfind("/api/v1/app/", 0) == 0 ||
                         path.rfind("/api/v1/license/", 0) == 0;
-            tcv::logger().DEBUG("[MW:Bearer] need={}", need);
+            zct_slms::logger().DEBUG("[MW:Bearer] need={}", need);
             if (!need) {
                 nextCb(nullptr);
                 return;
@@ -81,9 +81,9 @@ namespace tcv::middleware {
             if (const auto it = hdrs.find("authorization"); it != hdrs.end()) bearer = it->second;
             else if (const auto IT = hdrs.find("Authorization"); IT != hdrs.end()) bearer = IT->second;
 
-            auto u = tcv::service::AuthService::authenticateSession(bearer);
-            tcv::logger().DEBUG("[MW:Bearer] auth success={} uid={} type={}", u.success, u.user_id, u.user_type);
-            if (!u.success) {
+            auto u = zct_slms::service::AuthService::authenticateSession(bearer);
+            zct_slms::logger().DEBUG("[MW:Bearer] auth success={} uid={} type={}", u.success, u.user_id, u.user_type);
+            if (!u.success || u.user_type=="SUPPORT") {
                 mcb(
                     drogon::HttpResponse::newHttpJsonResponse(
                         api::makeFail(api::ErrorCode::UNAUTHORIZED, "未登录或登录已过期")
@@ -92,9 +92,9 @@ namespace tcv::middleware {
                 return;
             }
 
-            (*req->attributes())["tcv.user_type"] = u.user_type;
-            (*req->attributes())["tcv.user_id"] = u.user_id;
-            tcv::logger().DEBUG("[MW:Bearer] attributes set!");
+            (*req->attributes())["zct_slms.user_type"] = u.user_type;
+            (*req->attributes())["zct_slms.user_id"] = u.user_id;
+            zct_slms::logger().DEBUG("[MW:Bearer] attributes set!");
             nextCb(nullptr);
         }
     };
@@ -119,7 +119,7 @@ namespace tcv::middleware {
             if (const auto it = hdrs.find("authorization"); it != hdrs.end()) bearer = it->second;
             else if (const auto IT = hdrs.find("Authorization"); IT != hdrs.end()) bearer = IT->second;
 
-            auto u = tcv::service::AuthService::authenticateSession(bearer);
+            auto u = zct_slms::service::AuthService::authenticateSession(bearer);
             if (!u.success || u.user_type != "ADMIN") {
                 mcb(
                     drogon::HttpResponse::newHttpJsonResponse(
@@ -129,7 +129,7 @@ namespace tcv::middleware {
                 return;
             }
 
-            const auto level = tcv::repo::ConfigRepo::get("admin_security_level", "LAN");
+            const auto level = zct_slms::repo::ConfigRepo::get("admin_security_level", "LAN");
             const bool is_local = (ip == "127.0.0.1" || ip == "::1");
             if (level == "LOCAL" && !is_local) {
                 mcb(
@@ -140,7 +140,7 @@ namespace tcv::middleware {
                 return;
             }
             if (level == "PUBLIC") {
-                const auto wh = tcv::db::Database::instance().queryParams(
+                const auto wh = zct_slms::db::Database::instance().queryParams(
                     "SELECT 1 FROM ip_whitelist WHERE ip = ?",
                     ip
                 );
@@ -154,8 +154,8 @@ namespace tcv::middleware {
                 }
             }
 
-            (*req->attributes())["tcv.user_type"] = u.user_type;
-            (*req->attributes())["tcv.user_id"] = u.user_id;
+            (*req->attributes())["zct_slms.user_type"] = u.user_type;
+            (*req->attributes())["zct_slms.user_id"] = u.user_id;
             nextCb(nullptr);
         }
     };
@@ -167,96 +167,16 @@ namespace tcv::middleware {
             drogon::MiddlewareNextCallback&& nextCb,
             drogon::MiddlewareCallback&& mcb
         ) override {
-            const auto path = req->path();
-            fprintf(stderr, "[MW] AppSignatureMiddleware called for path=%s\n", path.c_str()); fflush(stderr);
-            if (const bool need = path.rfind("/api/v1/client/", 0) == 0; !need) {
-                nextCb(nullptr);
-                return;
-            }
-
-            auto& cfg = tcv::AppConfig::instance().security();
-            auto& params = req->getParameters();
-            auto nonce_it = params.find("nonce");
-            auto appid_it = params.find("appid");
-            const auto it = params.find("timestamp");
-            if (it == params.end() || it->second.empty()) {
-                mcb(
-                    drogon::HttpResponse::newHttpJsonResponse(
-                        api::makeFail(api::ErrorCode::TIMESTAMP_BAD, "缺少 timestamp")
-                    )
-                );
-                return;
-            }
-            int64_t ts = 0;
-            try { ts = std::stoll(it->second); } catch (...) {}
-            int64_t now = std::time(nullptr);
-            if (std::llabs(now - ts) > cfg.replay_window_seconds) {
-                mcb(
-                    drogon::HttpResponse::newHttpJsonResponse(
-                        api::makeFail(api::ErrorCode::TIMESTAMP_BAD, "timestamp 超出窗口")
-                    )
-                );
-                return;
-            }
-
-            if (nonce_it != params.end() && appid_it != params.end()) {
-                if (const auto app = tcv::repo::AppRepo::findByAppid(appid_it->second)) {
-                    const bool ok = tcv::repo::NonceRepo::tryUseNonce(
-                        app->id,
-                        nonce_it->second,
-                        ts,
-                        cfg.replay_window_seconds
-                    );
-                    if (!ok) {
-                        mcb(
-                            drogon::HttpResponse::newHttpJsonResponse(
-                                api::makeFail(api::ErrorCode::NONCE_REPLAY, "nonce 重复")
-                            )
-                        );
-                        return;
-                    }
-
-                    // ── 可选签名校验 (sign_enable=1 强制) ──
-                    if (app->sign_enable == 1) {
-                        fprintf(stderr, "[MW] sign_enable=1 hit, appid=%s\n", appid_it->second.c_str());
-                        const auto sig_it = params.find("signature");
-                        if (sig_it == params.end() || sig_it->second.empty()) {
-                            fprintf(stderr, "[MW] missing signature\n");
-                            mcb(
-                                drogon::HttpResponse::newHttpJsonResponse(
-                                    api::makeFail(api::ErrorCode::SIGNATURE_BAD, "缺少 signature")
-                                )
-                            );
-                            return;
-                        }
-                        const auto encode_it = params.find("encode");
-                        const auto encode_val = (encode_it != params.end()) ? encode_it->second : std::string();
-                        const auto canonical = tcv::service::SecurityService::canonicalRequest(
-                            req->methodString(),
-                            req->path(),
-                            appid_it->second,
-                            it->second,
-                            nonce_it->second,
-                            encode_val
-                        );
-                        if (auto expected = tcv::service::SecurityService::computeSignature(canonical, app->secret);
-                            expected != sig_it->second) {
-                            mcb(
-                                drogon::HttpResponse::newHttpJsonResponse(
-                                    api::makeFail(api::ErrorCode::SIGNATURE_BAD, "signature 校验失败")
-                                )
-                            );
-                            return;
-                        }
-                    }
-                }
-            }
-
+            // Client authentication is performed once by common::wrap().
             nextCb(nullptr);
         }
     };
 
     inline void registerAllMiddlewares(drogon::HttpAppFramework& app) {
+        app.registerPreRoutingAdvice([](const drogon::HttpRequestPtr& req,drogon::AdviceCallback&& stop,drogon::AdviceChainCallback&& next){
+            auto path=req->path();std::transform(path.begin(),path.end(),path.begin(),[](unsigned char c){return std::tolower(c);});
+            if(path.rfind("/captcha/",0)==0||path=="/captcha"){auto response=drogon::HttpResponse::newHttpResponse();response->setStatusCode(drogon::k404NotFound);stop(response);return;}next();
+        });
         app.registerMiddleware(std::make_shared<RateLimitMiddleware>());
         app.registerMiddleware(std::make_shared<BearerAuthMiddleware>());
         app.registerMiddleware(std::make_shared<AdminAuthMiddleware>());
@@ -264,4 +184,4 @@ namespace tcv::middleware {
     }
 }
 
-#endif // TCV_MIDDLEWARE_MIDDLEWARES
+#endif // ZCT_SLMS_MIDDLEWARE_MIDDLEWARES

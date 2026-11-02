@@ -16,21 +16,21 @@
 // Created by wanjiangzhi on 2026/10/2.
 //
 
-#ifndef TCV_API_V1_CLIENT_APP_NOTICE
-#define TCV_API_V1_CLIENT_APP_NOTICE
+#ifndef ZCT_SLMS_API_V1_CLIENT_APP_NOTICE
+#define ZCT_SLMS_API_V1_CLIENT_APP_NOTICE
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::client::app::notice {
+namespace zct_slms::inside::api::v1::client::app::notice {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const auto appid = tcv::inside::api::v1::common::paramStr(req, "appid");
-        const auto app = tcv::repo::AppRepo::findByAppid(appid);
+        const auto appid = zct_slms::inside::api::v1::common::paramStr(req, "appid");
+        const auto app = zct_slms::repo::AppRepo::findByAppid(appid);
         if (!app) {
             cb(drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeFail(tcv::api::ErrorCode::APP_NOT_FOUND, "APPID 不存在")));
+                zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "APPID 不存在")));
             return;
         }
 
@@ -38,8 +38,8 @@ namespace tcv::inside::api::v1::client::app::notice {
         v["appid"] = app->appid;
         v["notice"] = app->notice;
         v["has_notice"] = !app->notice.empty();
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(v)));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // TCV_API_V1_CLIENT_APP_NOTICE
+#endif // ZCT_SLMS_API_V1_CLIENT_APP_NOTICE

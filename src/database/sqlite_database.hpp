@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_DATABASE_SQLITE_DATABASE
-#define TCV_DATABASE_SQLITE_DATABASE
+#ifndef ZCT_SLMS_DATABASE_SQLITE_DATABASE
+#define ZCT_SLMS_DATABASE_SQLITE_DATABASE
 
 #include "database/idatabase.hpp"
 #include <sqlite3.h>
@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-namespace tcv::db {
+namespace zct_slms::db {
 
     class SqliteDatabase : public IDatabase {
     public:
@@ -107,9 +107,11 @@ namespace tcv::db {
         }
 
     protected:
-        void beginTransaction() override { sqlite3_exec(db_, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr); }
-        void commitTransaction() override { sqlite3_exec(db_, "COMMIT", nullptr, nullptr, nullptr); }
-        void rollbackTransaction() override { sqlite3_exec(db_, "ROLLBACK", nullptr, nullptr, nullptr); }
+        void beginTransaction() override { exec("BEGIN IMMEDIATE"); }
+        void commitTransaction() override { exec("COMMIT"); }
+        void rollbackTransaction() override {
+            if (!sqlite3_get_autocommit(db_)) exec("ROLLBACK");
+        }
 
     private:
         sqlite3* db_ = nullptr;
@@ -164,4 +166,4 @@ namespace tcv::db {
     };
 }
 
-#endif // TCV_DATABASE_SQLITE_DATABASE
+#endif // ZCT_SLMS_DATABASE_SQLITE_DATABASE

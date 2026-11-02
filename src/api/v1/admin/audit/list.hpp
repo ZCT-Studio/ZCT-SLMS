@@ -16,18 +16,18 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_ADMIN_AUDIT_LIST_THIS
-#define TCV_API_V1_ADMIN_AUDIT_LIST_THIS
+#ifndef ZCT_SLMS_API_V1_ADMIN_AUDIT_LIST_THIS
+#define ZCT_SLMS_API_V1_ADMIN_AUDIT_LIST_THIS
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::admin::audit::list {
+namespace zct_slms::inside::api::v1::admin::audit::list {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const int limit = static_cast<int>(tcv::inside::api::v1::common::paramI64(req, "limit", 200));
-        const auto logs = tcv::repo::AuditRepo::listRecent(limit);
+        const int limit = static_cast<int>(zct_slms::inside::api::v1::common::paramI64(req, "limit", 200));
+        const auto logs = zct_slms::repo::AuditRepo::listRecent(limit);
         Json::Value arr(Json::arrayValue);
         for (auto& a : logs) {
             Json::Value v;
@@ -41,8 +41,8 @@ namespace tcv::inside::api::v1::admin::audit::list {
             v["created_at"] = a.created_at;
             arr.append(v);
         }
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(arr)));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(arr)));
     }
 }
 
-#endif // TCV_API_V1_ADMIN_AUDIT_LIST_THIS
+#endif // ZCT_SLMS_API_V1_ADMIN_AUDIT_LIST_THIS

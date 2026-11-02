@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/10/3.
 //
 
-#ifndef TCV_DATABASE_PGSQL_DATABASE
-#define TCV_DATABASE_PGSQL_DATABASE
+#ifndef ZCT_SLMS_DATABASE_PGSQL_DATABASE
+#define ZCT_SLMS_DATABASE_PGSQL_DATABASE
 
 #include "database/idatabase.hpp"
 #include <libpq-fe.h>
@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-namespace tcv::db {
+namespace zct_slms::db {
 
     class PgsqlDatabase : public IDatabase {
     public:
@@ -242,4 +242,4 @@ namespace tcv::db {
     };
 }
 
-#endif // TCV_DATABASE_PGSQL_DATABASE
+#endif // ZCT_SLMS_DATABASE_PGSQL_DATABASE

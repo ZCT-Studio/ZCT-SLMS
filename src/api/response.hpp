@@ -16,14 +16,14 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_RESPONSE
-#define TCV_API_RESPONSE
+#ifndef ZCT_SLMS_API_RESPONSE
+#define ZCT_SLMS_API_RESPONSE
 
 #include <utility>
 #include <string>
 #include <json/json.h>
 
-namespace tcv::api {
+namespace zct_slms::api {
     // URP
     // { "code": 0, "message": "OK", "data": ... }
     template <typename T>
@@ -89,8 +89,8 @@ namespace tcv::api {
 
         constexpr int RATE_LIMITED = 9001;
     } // CLion 格式化牛大了，老是把这里`}}`放一起，下面一行占位
-    #ifdef END_OF_NAMESPACE_TCV_API_VOID
+    #ifdef END_OF_NAMESPACE_ZCT_SLMS_API_VOID
     #endif
 }
 
-#endif // TCV_API_RESPONSE
+#endif // ZCT_SLMS_API_RESPONSE

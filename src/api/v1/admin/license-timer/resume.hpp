@@ -16,21 +16,21 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_ADMIN_LICENSE_TIMER_RESUME
-#define TCV_API_V1_ADMIN_LICENSE_TIMER_RESUME
+#ifndef ZCT_SLMS_API_V1_ADMIN_LICENSE_TIMER_RESUME
+#define ZCT_SLMS_API_V1_ADMIN_LICENSE_TIMER_RESUME
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::admin::license_timer::resume {
+namespace zct_slms::inside::api::v1::admin::license_timer::resume {
     inline void handle(
         const drogon::HttpRequestPtr&,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const int64_t offset = tcv::repo::GlobalTimer::resume(std::time(nullptr));
+        const int64_t offset = zct_slms::repo::GlobalTimer::resume(std::time(nullptr));
         Json::Value v;
         v["offset_seconds"] = offset;
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(v)));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // TCV_API_V1_ADMIN_LICENSE_TIMER_RESUME
+#endif // ZCT_SLMS_API_V1_ADMIN_LICENSE_TIMER_RESUME

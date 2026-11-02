@@ -16,13 +16,13 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_PING
-#define TCV_API_V1_PING
+#ifndef ZCT_SLMS_API_V1_PING
+#define ZCT_SLMS_API_V1_PING
 
 #include <functional>
 #include <drogon/drogon.h>
 
-namespace tcv::inside::api::v1::ping {
+namespace zct_slms::inside::api::v1::ping {
     inline void handle(
         const drogon::HttpRequestPtr&,
         std::function<void(const drogon::HttpResponsePtr&)>&& cb
@@ -37,4 +37,4 @@ namespace tcv::inside::api::v1::ping {
     }
 }
 
-#endif // TCV_API_V1_PING
+#endif // ZCT_SLMS_API_V1_PING

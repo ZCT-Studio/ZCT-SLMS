@@ -16,21 +16,21 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_ADMIN_OWNER_BALANCE
-#define TCV_API_V1_ADMIN_OWNER_BALANCE
+#ifndef ZCT_SLMS_API_V1_ADMIN_OWNER_BALANCE
+#define ZCT_SLMS_API_V1_ADMIN_OWNER_BALANCE
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::admin::owner::balance {
+namespace zct_slms::inside::api::v1::admin::owner::balance {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        int64_t user_id = tcv::inside::api::v1::common::paramI64(req, "user_id");
-        int64_t balance = tcv::inside::api::v1::common::paramI64(req, "balance");
-        const int64_t admin_id = tcv::inside::api::v1::common::paramI64(req, "_admin_id", 0);
-        tcv::repo::UserRepo::setBalance(user_id, balance, std::time(nullptr));
-        tcv::repo::AuditRepo::log(
+        int64_t user_id = zct_slms::inside::api::v1::common::paramI64(req, "user_id");
+        int64_t balance = zct_slms::inside::api::v1::common::paramI64(req, "balance");
+        const int64_t admin_id = zct_slms::inside::api::v1::common::paramI64(req, "_admin_id", 0);
+        zct_slms::repo::UserRepo::setBalance(user_id, balance, std::time(nullptr));
+        zct_slms::repo::AuditRepo::log(
             "ADMIN",
             admin_id,
             "SetOwnerBalance",
@@ -38,12 +38,12 @@ namespace tcv::inside::api::v1::admin::owner::balance {
             user_id,
             std::format("balance={}", balance),
             "success",
-            tcv::inside::api::v1::common::clientIp(req),
+            zct_slms::inside::api::v1::common::clientIp(req),
             "{}",
             std::time(nullptr)
         );
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk()));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk()));
     }
 }
 
-#endif // TCV_API_V1_ADMIN_OWNER_BALANCE
+#endif // ZCT_SLMS_API_V1_ADMIN_OWNER_BALANCE

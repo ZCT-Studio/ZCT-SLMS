@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_COMMON_EXECUTORS_HPP
-#define TCV_COMMON_EXECUTORS_HPP
+#ifndef ZCT_SLMS_COMMON_EXECUTORS_HPP
+#define ZCT_SLMS_COMMON_EXECUTORS_HPP
 
 #include <filesystem>
 #include <fstream>
@@ -27,9 +27,9 @@
 
 #include "ZCLibLog/inside/logger_types.hpp"
 
-namespace tcv::logging {
-    struct tcv_executor : ZCLibLog::executor_api {
-        explicit tcv_executor(std::string log_path, bool console_only = false)
+namespace zct_slms::logging {
+    struct zct_slms_executor : ZCLibLog::executor_api {
+        explicit zct_slms_executor(std::string log_path, bool console_only = false)
             : log_path_(std::move(log_path)),
               console_only_(console_only) {
             if (console_only_) return;
@@ -45,17 +45,17 @@ namespace tcv::logging {
             }
         }
 
-        ~tcv_executor() override {
+        ~zct_slms_executor() override {
             if (ofs_.is_open()) {
                 ofs_.flush();
                 ofs_.close();
             }
         }
 
-        tcv_executor(const tcv_executor&) = delete;
-        tcv_executor& operator=(const tcv_executor&) = delete;
-        tcv_executor(tcv_executor&&) noexcept = default;
-        tcv_executor& operator=(tcv_executor&&) noexcept = default;
+        zct_slms_executor(const zct_slms_executor&) = delete;
+        zct_slms_executor& operator=(const zct_slms_executor&) = delete;
+        zct_slms_executor(zct_slms_executor&&) noexcept = default;
+        zct_slms_executor& operator=(zct_slms_executor&&) noexcept = default;
 
         void do_execute(ELString msg, ELogLevel lv) override {
             if (ofs_.is_open()) {
@@ -77,4 +77,4 @@ namespace tcv::logging {
     };
 }
 
-#endif // TCV_COMMON_EXECUTORS_HPP
+#endif // ZCT_SLMS_COMMON_EXECUTORS_HPP

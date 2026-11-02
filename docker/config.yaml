@@ -1,0 +1,76 @@
+# ZCT-SLMS 配置
+
+server:
+  # IPv4 监听地址, "" 表示不监听 IPv4
+  ipv4_host: "0.0.0.0"
+  # IPv6 监听地址, "" 表示不监听 IPv6
+  ipv6_host: ""
+  # 至少填一个 (ipv4_host / ipv6_host), 两者都空会报错
+  port: 17112
+
+database:
+  # sqlite | postgresql | mysql
+  type: "sqlite"
+
+  # ── SQLite
+  sqlite_path: "./data/zct_slms.db"
+
+  # ── PostgreSQL
+  # type: "postgresql"
+  # postgresql:
+  #   host: "127.0.0.1"
+  #   port: 5432
+  #   dbname: "zct_slms"
+  #   user: "zct_slms"
+  #   password: ""
+  #   sslmode: "prefer"       # disable / prefer / require / verify-ca / verify-full
+
+  # ── MySQL / MariaDB
+  # type: "mysql"
+  # mysql:
+  #   host: "127.0.0.1"
+  #   port: 3306
+  #   dbname: "zct_slms"
+  #   user: "zct_slms"
+  #   password: ""
+  #   connect_timeout_sec: 10
+
+security:
+  # false 时每个 APPSECRET 只展示一次；重置后是新密钥
+  app_secret_reveal_allowed: true
+  # 管理接口安全等级：LOCAL / LAN / PUBLIC
+  admin_security_level: "LAN"
+
+  # 重放保护时间窗口（秒）
+  replay_window_seconds: 60
+
+  # Session Token 有效期（秒）
+  session_ttl_seconds: 259200
+
+  # 临时 Token 默认有效期（秒）
+  temp_token_ttl_seconds: 3600
+
+  # 密码哈希
+  password_hasher: "argon2id"
+
+  # AES 服务器密钥（生产环境请通过环境变量注入）
+  # server_aes_key_env: "ZCT_SLMS_AES_KEY"
+
+rate_limit:
+  enabled: true
+  ip_per_sec: 100
+  app_per_sec: 500
+  license_per_sec: 10
+  login_fail_lock_threshold: 5
+  login_fail_lock_seconds: 300
+
+logging:
+  level: "INFO"
+  # API 请求与完成日志的等级，默认 DEBUG；logging.level=INFO 时不输出这些日志
+  api_level: "DEBUG"
+  async: true
+  file_path: "./logs/zct_slms.log"
+
+license:
+  # 仅初始化时读取；运行后的暂停状态由平台设置保存到数据库，重启后保留
+  timer_paused: false

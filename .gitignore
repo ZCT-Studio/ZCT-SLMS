@@ -34,10 +34,5 @@ browser/
 # NodeJS
 node_modules/
 
-# VitePress 生成产物
-docs/.vitepress/dist/
-docs/.vitepress/cache/
-.vitepress/cache/
-
 # Agent
 **.codex-*/

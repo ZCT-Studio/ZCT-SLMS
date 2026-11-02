@@ -16,12 +16,12 @@
 // Created by wanjiangzhi on 2026/9/26.
 //
 
-#ifndef TCV_COMMON_CONSTANTS_HPP
-#define TCV_COMMON_CONSTANTS_HPP
+#ifndef ZCT_SLMS_COMMON_CONSTANTS_HPP
+#define ZCT_SLMS_COMMON_CONSTANTS_HPP
 
-namespace tcv::constants {
-        inline constexpr auto PROJECT_NAME = "TingCloudVerifier";
-        inline constexpr auto PROJECT_VERSION = "1.0.0";
+namespace zct_slms::constants {
+        inline constexpr auto PROJECT_NAME = "ZCT-SLMS";
+        inline constexpr auto PROJECT_VERSION = "2.0.0";
 }
 
-#endif // TCV_COMMON_CONSTANTS_HPP
+#endif // ZCT_SLMS_COMMON_CONSTANTS_HPP

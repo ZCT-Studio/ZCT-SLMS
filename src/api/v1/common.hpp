@@ -16,8 +16,8 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_COMMON
-#define TCV_API_V1_COMMON
+#ifndef ZCT_SLMS_API_V1_COMMON
+#define ZCT_SLMS_API_V1_COMMON
 
 #include <chrono>
 #include <exception>
@@ -38,7 +38,12 @@
 #include "services/auth_app_service.hpp"
 #include "services/security_service.hpp"
 
-namespace tcv::inside::api::v1::common {
+namespace zct_slms::inside::api::v1::common {
+inline std::function<bool(const drogon::HttpRequestPtr&,const std::string&)> sensitiveAuthorization=[](const drogon::HttpRequestPtr&,const std::string&){return false;};
+inline std::function<Json::Value(Json::Value,const std::string&,const std::string&)> gateLogin = [](Json::Value value,const std::string&,const std::string&){return value;};
+inline std::function<void(const drogon::HttpRequestPtr&)> contentGuard=[](const drogon::HttpRequestPtr&){};
+inline std::function<void(const std::string&,const std::string&,int64_t)> reviewContentChanged=[](const std::string&,const std::string&,int64_t){};
+inline std::function<bool(const std::string&,int64_t)> forcePassword=[](const std::string&,int64_t){return false;};
 
 // ── URL k=v 解析（verify.hpp 原本有一份，提成公共） ──
 inline std::map<std::string, std::string> parseKvs(const std::string& body) {
@@ -66,35 +71,43 @@ inline std::string encryptByMode(
     const std::string& dec_mode,
     const std::string& dec_key
 ) {
-    if (dec_mode == "AES256-GCM") {
-        const auto key_raw = tcv::crypto::fromHex(dec_key);
-        const auto blob = tcv::crypto::aes256GcmEncrypt(plaintext, key_raw);
-        return tcv::crypto::base64Encode(blob);
+    if (dec_mode == "AES128-GCM") {
+        return zct_slms::crypto::base64Encode(zct_slms::crypto::aes128GcmEncrypt(plaintext, zct_slms::crypto::fromHex(dec_key)));
+    } else if (dec_mode == "AES256-GCM") {
+        const auto key_raw = zct_slms::crypto::fromHex(dec_key);
+        const auto blob = zct_slms::crypto::aes256GcmEncrypt(plaintext, key_raw);
+        return zct_slms::crypto::base64Encode(blob);
+    } else if (dec_mode == "CHACHA20-POLY1305") {
+        return zct_slms::crypto::base64Encode(zct_slms::crypto::chacha20Poly1305Encrypt(plaintext, zct_slms::crypto::fromHex(dec_key)));
     } else if (dec_mode == "BASE64") {
-        return tcv::crypto::base64Encode(plaintext);
+        return zct_slms::crypto::base64Encode(plaintext);
     } else if (dec_mode == "HEX") {
-        return tcv::crypto::toHex(plaintext);
+        return zct_slms::crypto::toHex(plaintext);
     }
     return plaintext; // NONE 或未知 → 明文返回
 }
 
 // ── AES256-GCM / BASE64 / HEX 统一解密（请求） ──
 // 返回解密后的 URL k=v 字符串（或空表示失败）
-inline std::string decryptByMode(
+inline std::optional<std::string> decryptByMode(
     const std::string& encoded,
     const std::string& dec_mode,
     const std::string& dec_key
 ) {
-    if (dec_mode == "AES256-GCM") {
-        const auto blob = tcv::crypto::base64Decode(encoded);
-        const auto key_raw = tcv::crypto::fromHex(dec_key);
-        return tcv::crypto::aes256GcmDecrypt(blob, key_raw);
-    } else if (dec_mode == "BASE64") {
-        return tcv::crypto::base64Decode(encoded);
+    if (dec_mode == "AES128-GCM") {
+        return zct_slms::crypto::aes128GcmDecrypt(zct_slms::crypto::base64Decode(encoded), zct_slms::crypto::fromHex(dec_key));
+    } else if (dec_mode == "AES256-GCM") {
+        const auto blob = zct_slms::crypto::base64Decode(encoded);
+        const auto key_raw = zct_slms::crypto::fromHex(dec_key);
+        return zct_slms::crypto::aes256GcmDecrypt(blob, key_raw);
+    } else if (dec_mode == "CHACHA20-POLY1305") {
+        return zct_slms::crypto::chacha20Poly1305Decrypt(zct_slms::crypto::base64Decode(encoded), zct_slms::crypto::fromHex(dec_key));
+    } else if (dec_mode == "BASE64" || dec_mode == "NONE") {
+        return zct_slms::crypto::base64Decode(encoded);
     } else if (dec_mode == "HEX") {
-        return tcv::crypto::fromHex(encoded);
+        return zct_slms::crypto::fromHex(encoded);
     }
-    return {};
+    return std::nullopt;
 }
 
 // ── 从请求取参数：优先用 wrap() 解密后注入的 decoded_kv ──
@@ -103,11 +116,17 @@ inline std::string paramStr(
     const std::string& key,
     const std::string& def = ""
 ) {
+    if (req->attributes()->find("zct_slms.signed") && key != "appid") {
+        auto m = req->attributes()->get<std::map<std::string, std::string>>("zct_slms.decoded_kv");
+        auto it = m.find(key);
+        return it == m.end() ? def : it->second;
+    }
+    if (req->attributes()->find("zct_slms.signed") && key == "appid") return req->attributes()->get<std::string>("zct_slms.signed_appid");
     // 1. 优先查 wrap() 里 decrypted 的 encode 内容（URL k=v 对）
     auto attrs = req->attributes();
-    if (attrs && attrs->find("tcv.decoded_kv")) {
+    if (attrs && attrs->find("zct_slms.decoded_kv")) {
         try {
-            auto m = attrs->get<std::map<std::string, std::string>>("tcv.decoded_kv");
+            auto m = attrs->get<std::map<std::string, std::string>>("zct_slms.decoded_kv");
             if (auto it = m.find(key); it != m.end() && !it->second.empty()) return it->second;
         } catch (...) {}
     }
@@ -170,21 +189,21 @@ inline std::string paramStr(
 
     inline int64_t currentUserId(const drogon::HttpRequestPtr& req) {
         const auto attrs = req->attributes();
-        if (!attrs || !attrs->find("tcv.user_id")) return 0;
+        if (!attrs || !attrs->find("zct_slms.user_id")) return 0;
         try {
-            const auto v = attrs->get<int64_t>("tcv.user_id");
+            const auto v = attrs->get<int64_t>("zct_slms.user_id");
             return v;
         } catch (...) {}
         try {
-            const auto v = attrs->get<int>("tcv.user_id");
+            const auto v = attrs->get<int>("zct_slms.user_id");
             return v;
         } catch (...) { return 0; }
     }
 
     inline std::string currentUserType(const drogon::HttpRequestPtr& req) {
         const auto attrs = req->attributes();
-        if (!attrs || !attrs->find("tcv.user_type")) return "";
-        try { return attrs->get<std::string>("tcv.user_type"); } catch (...) { return ""; }
+        if (!attrs || !attrs->find("zct_slms.user_type")) return "";
+        try { return attrs->get<std::string>("zct_slms.user_type"); } catch (...) { return ""; }
     }
 
     // user_type → role string (OWNER / SUBUSER)
@@ -215,156 +234,102 @@ inline std::string paramStr(
             auto method = std::string(req->methodString());
             std::string path = req->path();
             std::string ip = req->getPeerAddr().toIp();
-            tcv::logger().INFO("-> {} {} from {}", method, path, ip);
+            zct_slms::apiLog("-> {} {} from {}", method, path, ip);
             try {
                 auto req_path = req->path();
+                if(req_path!="/api/v1/auth/onboarding"&&req_path!="/api/v1/auth/logout"&&req_path!="/api/v1/system/ping"&&req_path!="/api/v1/auth/captcha"){auto auth=zct_slms::service::AuthService::authenticateSession(authBearer(req));if(auth.success&&forcePassword(auth.user_type,auth.user_id)){cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(2010,"为了您的账号安全请设置新的密码")));return;}}
 
                 if (req_path.rfind("/api/v1/admin/", 0) == 0) {
                     std::string bearer = authBearer(req);
-                    auto u = tcv::service::AuthService::authenticateSession(bearer);
+                    auto u = zct_slms::service::AuthService::authenticateSession(bearer);
                     if (!u.success || u.user_type != "ADMIN") {
                         cb(
                             drogon::HttpResponse::newHttpJsonResponse(
-                                tcv::api::makeFail(tcv::api::ErrorCode::UNAUTHORIZED, "需要管理员登录")
+                                zct_slms::api::makeFail(zct_slms::api::ErrorCode::UNAUTHORIZED, "需要管理员登录")
                             )
                         );
                         return;
                     }
 
                     auto req_ip = req->getPeerAddr().toIp();
-                    auto level = tcv::repo::ConfigRepo::get("admin_security_level", "LAN");
+                    auto level = zct_slms::repo::ConfigRepo::get("admin_security_level", "LAN");
                     if (bool is_local = (req_ip == "127.0.0.1" || req_ip == "::1"); level == "LOCAL" && !is_local) {
                         cb(
                             drogon::HttpResponse::newHttpJsonResponse(
-                                tcv::api::makeFail(tcv::api::ErrorCode::IP_NOT_ALLOWED, "LOCAL 级别仅允许本机访问")
+                                zct_slms::api::makeFail(zct_slms::api::ErrorCode::IP_NOT_ALLOWED, "LOCAL 级别仅允许本机访问")
                             )
                         );
                         return;
                     }
                     if (level == "PUBLIC") {
-                        auto wh = tcv::db::Database::instance().queryParams(
+                        auto wh = zct_slms::db::Database::instance().queryParams(
                             "SELECT 1 FROM ip_whitelist WHERE ip = ?",
                             req_ip
                         );
                         if (wh.empty()) {
                             cb(
                                 drogon::HttpResponse::newHttpJsonResponse(
-                                    tcv::api::makeFail(tcv::api::ErrorCode::IP_NOT_ALLOWED, "IP 不在白名单")
+                                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::IP_NOT_ALLOWED, "IP 不在白名单")
                                 )
                             );
                             return;
                         }
                     }
-                    (*req->attributes())["tcv.user_type"] = u.user_type;
-                    (*req->attributes())["tcv.user_id"] = u.user_id;
+                    (*req->attributes())["zct_slms.user_type"] = u.user_type;
+                    (*req->attributes())["zct_slms.user_id"] = u.user_id;
                 }
 
                 else if (req_path.rfind("/api/v1/app/", 0) == 0 ||
                          req_path.rfind("/api/v1/license/", 0) == 0) {
                     std::string bearer = authBearer(req);
-                    auto u = tcv::service::AuthService::authenticateSession(bearer);
-                    if (!u.success) {
+                    auto u = zct_slms::service::AuthService::authenticateSession(bearer);
+                    if (!u.success || u.user_type=="SUPPORT") {
                         cb(
                             drogon::HttpResponse::newHttpJsonResponse(
-                                tcv::api::makeFail(tcv::api::ErrorCode::UNAUTHORIZED, "未登录或登录已过期")
+                                zct_slms::api::makeFail(zct_slms::api::ErrorCode::UNAUTHORIZED, "未登录或登录已过期")
                             )
                         );
                         return;
                     }
-                    (*req->attributes())["tcv.user_type"] = u.user_type;
-                    (*req->attributes())["tcv.user_id"] = u.user_id;
+                    (*req->attributes())["zct_slms.user_type"] = u.user_type;
+                    (*req->attributes())["zct_slms.user_id"] = u.user_id;
                 }
 
                 else if (req_path.rfind("/api/v1/client/", 0) == 0) {
-                    auto& cfg = tcv::AppConfig::instance().security();
-                    auto& params = req->getParameters();
-                    auto it = params.find("timestamp");
-                    if (it == params.end() || it->second.empty()) {
-                        cb(
-                            drogon::HttpResponse::newHttpJsonResponse(
-                                tcv::api::makeFail(tcv::api::ErrorCode::TIMESTAMP_BAD, "缺少 timestamp")
-                            )
-                        );
-                        return;
-                    }
+                    auto& cfg = zct_slms::AppConfig::instance().security();
+                    const auto appid = paramStr(req, "appid");
+                    const auto timestamp = paramStr(req, "timestamp");
+                    const auto nonce = paramStr(req, "nonce");
+                    const auto encoded = paramStr(req, "encode");
+                    auto fail = [&](int code, const std::string& message) { cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(code, message))); };
+                    if (appid.empty()) { fail(zct_slms::api::ErrorCode::BAD_REQUEST, "缺少 appid"); return; }
+                    const auto app = zct_slms::repo::AppRepo::findByAppid(appid);
+                    if (!app) { fail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "APPID 不存在"); return; }
+                    if (app->status != 1) { fail(zct_slms::api::ErrorCode::APP_DISABLED, "APP 已禁用"); return; }
                     int64_t ts = 0;
-                    try { ts = std::stoll(it->second); } catch (...) {}
-                    int64_t now = std::time(nullptr);
-                    if (std::llabs(now - ts) > cfg.replay_window_seconds) {
-                        cb(
-                            drogon::HttpResponse::newHttpJsonResponse(
-                                tcv::api::makeFail(tcv::api::ErrorCode::TIMESTAMP_BAD, "timestamp 超出窗口")
-                            )
-                        );
-                        return;
+                    try { size_t n = 0; ts = std::stoll(timestamp, &n); if (n != timestamp.size()) ts = 0; } catch (...) { ts = 0; }
+                    const int64_t now = std::time(nullptr);
+                    if (ts <= 0 || ts < now - cfg.replay_window_seconds || ts > now + cfg.replay_window_seconds) { fail(zct_slms::api::ErrorCode::TIMESTAMP_BAD, "timestamp 非法或超出窗口"); return; }
+                    if (nonce.empty() || nonce.size() > 128) { fail(zct_slms::api::ErrorCode::BAD_REQUEST, "nonce 必须为 1-128 字符"); return; }
+                    if (app->sign_enable == 1) {
+                        if (encoded.empty()) { fail(zct_slms::api::ErrorCode::SIGNATURE_BAD, "签名请求必须包含 encode"); return; }
+                        const auto canonical = zct_slms::service::SecurityService::canonicalRequest(method, req_path, appid, timestamp, nonce, encoded);
+                        const auto expected = zct_slms::service::SecurityService::computeSignature(canonical, app->secret);
+                        if (!zct_slms::crypto::constantTimeEqual(expected, paramStr(req, "signature"))) { fail(zct_slms::api::ErrorCode::SIGNATURE_BAD, "signature 校验失败"); return; }
                     }
-
-                    auto appid_it = params.find("appid");
-                    std::optional<tcv::models::App> app;
-                    if (appid_it != params.end() && !appid_it->second.empty()) {
-                        app = tcv::repo::AppRepo::findByAppid(appid_it->second);
-                    }
-
                     bool request_encrypted = false;
                     std::string used_dec_mode;
-                    if (app && app->dec_mode != "NONE") {
-                        auto encode_it = params.find("encode");
-                        if (encode_it != params.end() && !encode_it->second.empty()) {
-                            auto decoded = decryptByMode(encode_it->second, app->dec_mode, app->dec_key);
-                            if (!decoded.empty()) {
-                                auto kv = parseKvs(decoded);
-                                (*req->attributes())["tcv.decoded_kv"] = kv;
-                                request_encrypted = true;
-                                used_dec_mode = app->dec_mode;
-                            } else {
-                                cb(drogon::HttpResponse::newHttpJsonResponse(
-                                    tcv::api::makeFail(tcv::api::ErrorCode::BAD_REQUEST, "encode 解密失败")));
-                                return;
-                            }
-                        }
+                    if (!encoded.empty()) {
+                        const auto decoded = decryptByMode(encoded, app->dec_mode, app->dec_key);
+                        if (!decoded) { fail(zct_slms::api::ErrorCode::BAD_REQUEST, "encode 解密失败"); return; }
+                        auto kv = parseKvs(*decoded);
+                        for (const auto* key : {"appid", "timestamp", "nonce", "signature", "encode"}) kv.erase(key);
+                        (*req->attributes())["zct_slms.decoded_kv"] = std::move(kv);
+                        request_encrypted = app->dec_mode != "NONE";
+                        used_dec_mode = app->dec_mode;
                     }
-
-                    auto nonce_it = params.find("nonce");
-                    if (app && nonce_it != params.end() && !nonce_it->second.empty()) {
-                        if (!tcv::repo::NonceRepo::tryUseNonce(
-                            app->id,
-                            nonce_it->second,
-                            ts,
-                            cfg.replay_window_seconds
-                        )) {
-                            cb(
-                                drogon::HttpResponse::newHttpJsonResponse(
-                                    tcv::api::makeFail(tcv::api::ErrorCode::NONCE_REPLAY, "nonce 重复")
-                                )
-                            );
-                            return;
-                        }
-
-                        if (app->sign_enable == 1) {
-                            const auto sig_it = params.find("signature");
-                            if (sig_it == params.end() || sig_it->second.empty()) {
-                                cb(drogon::HttpResponse::newHttpJsonResponse(
-                                    tcv::api::makeFail(tcv::api::ErrorCode::SIGNATURE_BAD, "缺少 signature")));
-                                return;
-                            }
-                            const auto encode_it = params.find("encode");
-                            const std::string encode_val = (encode_it != params.end()) ? encode_it->second : std::string();
-                            const auto canonical = tcv::service::SecurityService::canonicalRequest(
-                                method,
-                                req_path,
-                                appid_it->second,
-                                it->second,
-                                nonce_it->second,
-                                encode_val
-                            );
-                            if (auto expected = tcv::service::SecurityService::computeSignature(canonical, app->secret);
-                                expected != sig_it->second) {
-                                cb(drogon::HttpResponse::newHttpJsonResponse(
-                                    tcv::api::makeFail(tcv::api::ErrorCode::SIGNATURE_BAD, "signature 校验失败")));
-                                return;
-                            }
-                        }
-                    }
+                    if (app->sign_enable == 1) { (*req->attributes())["zct_slms.signed"] = true; (*req->attributes())["zct_slms.signed_appid"] = appid; }
+                    if (!zct_slms::repo::NonceRepo::tryUseNonce(app->id, nonce, ts, cfg.replay_window_seconds)) { fail(zct_slms::api::ErrorCode::NONCE_REPLAY, "nonce 重复"); return; }
 
                     auto orig_cb = std::move(cb);
                     auto wrapped_cb = [
@@ -406,15 +371,16 @@ inline std::string paramStr(
                     };
                     cb = std::move(wrapped_cb);
                 }
+                try{contentGuard(req);}catch(const std::invalid_argument& e){cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(zct_slms::api::ErrorCode::VALIDATION,e.what())));return;}
                 fn(req, std::move(cb));
                 auto t1 = std::chrono::steady_clock::now();
                 auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-                tcv::logger().INFO("<- {} {} done in {}ms", method, req_path, ms);
+                zct_slms::apiLog("<- {} {} done in {}ms", method, req_path, ms);
             } catch (const std::exception& e) {
-                tcv::logger().FATAL("Handler exception on {} {}: {}", method, path, e.what());
+                zct_slms::logger().FATAL("Handler exception on {} {}: {}", method, path, e.what());
                 auto resp = drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(
-                        tcv::api::ErrorCode::INTERNAL,
+                    zct_slms::api::makeFail(
+                        zct_slms::api::ErrorCode::INTERNAL,
                         std::string("internal: ") + e.what()
                     )
                 );
@@ -424,7 +390,7 @@ inline std::string paramStr(
     }
 }
 
-#endif // TCV_API_V1_COMMON
+#endif // ZCT_SLMS_API_V1_COMMON
 
 
 

@@ -16,40 +16,40 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_LICENSE_ADD_TIME
-#define TCV_API_V1_LICENSE_ADD_TIME
+#ifndef ZCT_SLMS_API_V1_LICENSE_ADD_TIME
+#define ZCT_SLMS_API_V1_LICENSE_ADD_TIME
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::license::add_time {
+namespace zct_slms::inside::api::v1::license::add_time {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const int64_t id_raw = tcv::inside::api::v1::common::paramI64(req, "license_id");
-        const std::string lic_plain = tcv::inside::api::v1::common::paramStr(req, "license");
-        const auto id_opt = tcv::service::resolveLicenseId(id_raw, lic_plain);
+        const int64_t id_raw = zct_slms::inside::api::v1::common::paramI64(req, "license_id");
+        const std::string lic_plain = zct_slms::inside::api::v1::common::paramStr(req, "license");
+        const auto id_opt = zct_slms::service::resolveLicenseId(id_raw, lic_plain);
         if (!id_opt) {
             cb(drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeResponse(4000, "请传 license_id 或 license", Json::Value{})
+                zct_slms::api::makeResponse(4000, "请传 license_id 或 license", Json::Value{})
             ));
             return;
         }
         const int64_t id = *id_opt;
-        if (!tcv::inside::api::v1::common::subuserOwnsLicense(req, id)) {
+        if (!zct_slms::inside::api::v1::common::subuserOwnsLicense(req, id)) {
             cb(drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeFail(tcv::api::ErrorCode::UNAUTHORIZED, "无权操作此卡密")
+                zct_slms::api::makeFail(zct_slms::api::ErrorCode::UNAUTHORIZED, "无权操作此卡密")
             ));
             return;
         }
-        const int64_t sec = tcv::inside::api::v1::common::paramI64(req, "seconds");
-        const auto r = tcv::service::LicenseService::addTime(id, sec);
+        const int64_t sec = zct_slms::inside::api::v1::common::paramI64(req, "seconds");
+        const auto r = zct_slms::service::LicenseService::addTime(id, sec);
         cb(
             drogon::HttpResponse::newHttpJsonResponse(
-                tcv::api::makeResponse(r.code, r.message, Json::Value{})
+                zct_slms::api::makeResponse(r.code, r.message, Json::Value{})
             )
         );
     }
 }
 
-#endif // TCV_API_V1_LICENSE_ADD_TIME
+#endif // ZCT_SLMS_API_V1_LICENSE_ADD_TIME

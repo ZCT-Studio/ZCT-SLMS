@@ -16,19 +16,19 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_AUTH_LOGOUT
-#define TCV_API_V1_AUTH_LOGOUT
+#ifndef ZCT_SLMS_API_V1_AUTH_LOGOUT
+#define ZCT_SLMS_API_V1_AUTH_LOGOUT
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::auth::logout {
+namespace zct_slms::inside::api::v1::auth::logout {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        tcv::service::AuthService::logout(tcv::inside::api::v1::common::authBearer(req));
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk()));
+        zct_slms::service::AuthService::logout(zct_slms::inside::api::v1::common::authBearer(req));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk()));
     }
 }
 
-#endif // TCV_API_V1_AUTH_LOGOUT
+#endif // ZCT_SLMS_API_V1_AUTH_LOGOUT

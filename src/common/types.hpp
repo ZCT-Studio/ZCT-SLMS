@@ -16,15 +16,15 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_COMMON_TYPES
-#define TCV_COMMON_TYPES
+#ifndef ZCT_SLMS_COMMON_TYPES
+#define ZCT_SLMS_COMMON_TYPES
 
 #include <cstdint>
 #include <utility>
 #include <optional>
 #include <string>
 
-namespace tcv::common {
+namespace zct_slms::common {
     using i32 = std::int32_t;
     using i64 = std::int64_t;
     using u32 = std::uint32_t;
@@ -102,4 +102,4 @@ namespace tcv::common {
     };
 }
 
-#endif // TCV_COMMON_TYPES
+#endif // ZCT_SLMS_COMMON_TYPES

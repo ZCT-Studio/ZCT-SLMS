@@ -16,28 +16,28 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_AUTH_ADMIN_LOGIN
-#define TCV_API_V1_AUTH_ADMIN_LOGIN
+#ifndef ZCT_SLMS_API_V1_AUTH_ADMIN_LOGIN
+#define ZCT_SLMS_API_V1_AUTH_ADMIN_LOGIN
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::auth::admin::login {
+namespace zct_slms::inside::api::v1::auth::admin::login {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const std::string username = tcv::inside::api::v1::common::paramStr(req, "username");
-        const std::string password = tcv::inside::api::v1::common::paramStr(req, "password");
-        const auto r = tcv::service::AuthService::loginAdmin(
+        const std::string username = zct_slms::inside::api::v1::common::paramStr(req, "username");
+        const std::string password = zct_slms::inside::api::v1::common::paramStr(req, "password");
+        const auto r = zct_slms::service::AuthService::loginAdmin(
             username,
             password,
-            tcv::inside::api::v1::common::clientIp(req),
-            tcv::inside::api::v1::common::clientUa(req)
+            zct_slms::inside::api::v1::common::clientIp(req),
+            zct_slms::inside::api::v1::common::clientUa(req)
         );
         if (!r.success) {
             cb(
                 drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(tcv::api::ErrorCode::USER_BAD_CREDENTIALS, r.message)
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::USER_BAD_CREDENTIALS, r.message)
                 )
             );
             return;
@@ -47,8 +47,10 @@ namespace tcv::inside::api::v1::auth::admin::login {
         v["user_type"] = r.user_type;
         v["user_id"] = r.user_id;
         v["username"] = r.username;
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(v)));
+        v["force_setup"] = !zct_slms::repo::ConfigRepo::getBool("admin_initial_setup_done:" + std::to_string(r.user_id), true);
+        v=zct_slms::inside::api::v1::common::gateLogin(v,zct_slms::inside::api::v1::common::clientIp(req),zct_slms::inside::api::v1::common::clientUa(req));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // TCV_API_V1_AUTH_ADMIN_LOGIN
+#endif // ZCT_SLMS_API_V1_AUTH_ADMIN_LOGIN

@@ -16,28 +16,28 @@
 // Created by wanjiangzhi on 2026/9/25.
 //
 
-#ifndef TCV_API_V1_AUTH_OWNER_LOGIN
-#define TCV_API_V1_AUTH_OWNER_LOGIN
+#ifndef ZCT_SLMS_API_V1_AUTH_OWNER_LOGIN
+#define ZCT_SLMS_API_V1_AUTH_OWNER_LOGIN
 
 #include "api/v1/uih.h"
 
-namespace tcv::inside::api::v1::auth::owner::login {
+namespace zct_slms::inside::api::v1::auth::owner::login {
     inline void handle(
         const drogon::HttpRequestPtr& req,
         std::function<void(const drogon::HttpResponsePtr &)>&& cb
     ) {
-        const std::string username = tcv::inside::api::v1::common::paramStr(req, "username");
-        const std::string password = tcv::inside::api::v1::common::paramStr(req, "password");
-        const auto r = tcv::service::AuthService::loginOwner(
+        const std::string username = zct_slms::inside::api::v1::common::paramStr(req, "username");
+        const std::string password = zct_slms::inside::api::v1::common::paramStr(req, "password");
+        const auto r = zct_slms::service::AuthService::loginOwner(
             username,
             password,
-            tcv::inside::api::v1::common::clientIp(req),
-            tcv::inside::api::v1::common::clientUa(req)
+            zct_slms::inside::api::v1::common::clientIp(req),
+            zct_slms::inside::api::v1::common::clientUa(req)
         );
         if (!r.success) {
             cb(
                 drogon::HttpResponse::newHttpJsonResponse(
-                    tcv::api::makeFail(tcv::api::ErrorCode::USER_BAD_CREDENTIALS, r.message)
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::USER_BAD_CREDENTIALS, r.message)
                 )
             );
             return;
@@ -47,8 +47,9 @@ namespace tcv::inside::api::v1::auth::owner::login {
         v["user_type"] = r.user_type;
         v["user_id"] = r.user_id;
         v["username"] = r.username;
-        cb(drogon::HttpResponse::newHttpJsonResponse(tcv::api::makeOk(v)));
+        v=zct_slms::inside::api::v1::common::gateLogin(v,zct_slms::inside::api::v1::common::clientIp(req),zct_slms::inside::api::v1::common::clientUa(req));
+        cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // TCV_API_V1_AUTH_OWNER_LOGIN
+#endif // ZCT_SLMS_API_V1_AUTH_OWNER_LOGIN
