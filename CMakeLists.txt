@@ -16,6 +16,10 @@ include(cmake/compiler_flags.cmake)
 include(cmake/dependencies.cmake)
 
 add_executable(TingCloudVerifier src/main.cpp)
+add_library(TcvZACLib STATIC libs/ZACLib/ZACLib.cpp)
+target_include_directories(TcvZACLib PUBLIC "${CMAKE_SOURCE_DIR}/libs")
+set_target_properties(TcvZACLib PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED YES)
+target_link_libraries(TingCloudVerifier PRIVATE TcvZACLib)
 target_include_directories(TingCloudVerifier PRIVATE ${TCV_INCLUDE_DIRS})
 
 target_link_libraries(TingCloudVerifier PRIVATE
@@ -23,10 +27,14 @@ target_link_libraries(TingCloudVerifier PRIVATE
     unofficial::sqlite3::sqlite3
     yaml-cpp::yaml-cpp
     OpenSSL::SSL OpenSSL::Crypto
+    CURL::libcurl
     unofficial::argon2::libargon2
 )
 
 target_compile_definitions(TingCloudVerifier PRIVATE TCV_HAS_ARGON2=1)
+if(MSVC)
+    target_compile_options(TingCloudVerifier PRIVATE /bigobj)
+endif()
 
 include(cmake/optional_backends.cmake)
 

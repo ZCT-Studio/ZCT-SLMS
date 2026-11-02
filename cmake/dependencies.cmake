@@ -2,6 +2,7 @@ find_package(Drogon                 CONFIG REQUIRED)
 find_package(unofficial-sqlite3     CONFIG REQUIRED)
 find_package(yaml-cpp               CONFIG REQUIRED)
 find_package(OpenSSL                REQUIRED)
+find_package(CURL REQUIRED)
 find_package(unofficial-argon2      CONFIG REQUIRED)
 
 if(TARGET Jsoncpp_lib AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
