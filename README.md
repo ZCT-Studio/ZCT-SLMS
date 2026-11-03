@@ -102,3 +102,9 @@ Docker 镜像已包含运行配置、数据库迁移和许可证；`.env.example
 后端使用 C++20。Linux 发布在 Ubuntu 22.04 / Ubuntu 22.04 ARM64 上使用 GCC 13 构建（`std::format` 需要相应标准库支持），静态链接 libstdc++ 与 libgcc，避免要求部署系统升级 C++ 运行库。Ubuntu 22.04 与 Debian 12 的 x64、ARM64 运行兼容性由发布前手动检查。自行编译仍需支持 `std::format` 的 C++20 工具链。
 
 Docker 镜像拥有独立的用户空间，基础镜像版本不等同于宿主机系统要求。
+
+## 后端托管前端
+
+将前端静态发布包解压到后端工作目录，确保 `ZCT-SLMS-Web/index.html` 存在（不要再多套一层同名目录）。从该工作目录启动后端，访问后端端口即可打开页面；React 页面路径支持直接访问和刷新。API 与不存在的资源仍返回 404。启动日志会打印实际静态目录。
+
+同域托管时，`runtime-config.js` 的 `apiBaseUrl` 留空。Docker 可将前端目录只读挂载到 `/app/ZCT-SLMS-Web`，前端仍可独立更新。

@@ -41,7 +41,7 @@ WORKDIR /app
 COPY migrations/ migrations/
 COPY docker/config.yaml config/config.yaml
 COPY LICENSE LICENSE
-RUN mkdir -p data logs zct_slms_web uploads tmp && chown -R 10001:10001 /app
+RUN mkdir -p data logs ZCT-SLMS-Web uploads tmp && chown -R 10001:10001 /app
 USER 10001:10001
 EXPOSE 17112
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
