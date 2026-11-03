@@ -53,7 +53,7 @@ namespace {
                 if (hp.hash.empty()) throw std::runtime_error("Cannot hash initial administrator password");
                 const auto id=zct_slms::repo::AdminRepo::insert("admin", hp.hash, hp.salt, "Administrator", std::time(nullptr));
                 zct_slms::repo::ConfigRepo::set("admin_initial_setup_done:"+std::to_string(id),"0",std::time(nullptr));
-                zct_slms::logger().FATAL("Initial administrator: username=admin password={}. Change it immediately.", password);
+                zct_slms::logger().WARN("Initial administrator: username=admin password={}. Change it immediately.", password);
             }
             return true;
         } catch (const std::exception& e) {
