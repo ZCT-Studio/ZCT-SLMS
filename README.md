@@ -34,6 +34,25 @@ Docker 使用 `zct_slms-config`、`zct_slms-data`、`zct_slms-logs` 卷保存配
 
 升级前备份数据库、配置与 `data/auth-master.key`；三者需配套恢复。`docker compose down -v` 会删除数据卷，不用于普通停止或升级。
 
+## 发布平台
+
+二进制发布仅保留 Linux x64、Linux ARM64、Windows x64。macOS、x86、ARMv7 和 Windows ARM64 不再构建或发布。
+
+推送任意分支上的 `v*` tag 后，三个二进制平台构建成功，且两种 Linux 镜像完成启动检查后，发布 Docker 镜像索引和 Release。tag 含 `-` 为预发布，不更新 `latest`。
+
+| Docker 平台 | 独立镜像标签示例 |
+| --- | --- |
+| Linux x64 (`linux/amd64`) | `ghcr.io/zct-studio/zct-slms:v2.0.1-linux-amd64` |
+| Linux ARM64 (`linux/arm64`) | `ghcr.io/zct-studio/zct-slms:v2.0.1-linux-arm64` |
+
+公共版本标签（如 `:v2.0.1`，稳定版还有 `:latest`）包含这两种 Linux 架构，Docker 自动选择匹配的镜像。Windows x64 不发布 Windows 容器镜像；在 Windows 上使用 Docker Desktop 的 Linux containers 模式即可运行 Linux 镜像。版本号替换为已发布版本，例如：
+
+```sh
+docker pull ghcr.io/zct-studio/zct-slms:v2.0.1
+```
+
+本地构建及持久化配置继续使用现有 Compose。
+
 ## 本地构建
 
 安装 CMake、受支持的 C++ 工具链及 vcpkg 依赖后执行：
