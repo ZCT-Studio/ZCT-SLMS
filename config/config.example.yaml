@@ -13,7 +13,7 @@ database:
   type: "sqlite"
 
   # ── SQLite
-  sqlite_path: "./zct_slms.db"
+  sqlite_path: "./data/zct_slms.db"
 
   # ── PostgreSQL
   # type: "postgresql"
