@@ -30,6 +30,7 @@
 #include "repositories/license_repo.hpp"
 #include "services/auth_app_service.hpp"
 #include "services/security_service.hpp"
+#include "services/identity_service.hpp"
 
 namespace zct_slms::middleware {
     class RateLimitMiddleware : public drogon::HttpMiddleware<RateLimitMiddleware, false> {
@@ -172,7 +173,23 @@ namespace zct_slms::middleware {
         }
     };
 
+    inline bool allowedFrontend(const drogon::HttpRequestPtr& req) {
+      auto origin=req->getHeader("Origin");if(origin.empty()||origin=="null")return false;
+      try{auto config=zct_slms::identity::config();return origin==zct_slms::identity::baseUrl(config)||origin==zct_slms::identity::backendBaseUrl(config);}catch(...){return false;}
+    }
+    inline void corsHeaders(const drogon::HttpRequestPtr& req,const drogon::HttpResponsePtr& response) {
+      if(req->path().rfind("/api/",0)!=0)return;
+      auto vary=response->getHeader("Vary");if(vary.find("Origin")==std::string::npos)response->addHeader("Vary",vary.empty()?"Origin":vary+", Origin");
+      auto origin=req->attributes()->get<std::string>("zct_slms.cors_origin");if(origin.empty())return;
+      response->addHeader("Access-Control-Allow-Origin",origin);
+    }
     inline void registerAllMiddlewares(drogon::HttpAppFramework& app) {
+        app.registerPreRoutingAdvice([](const drogon::HttpRequestPtr& req,drogon::AdviceCallback&& stop,drogon::AdviceChainCallback&& next){
+          if(req->path().rfind("/api/",0)==0&&allowedFrontend(req))req->attributes()->insert("zct_slms.cors_origin",req->getHeader("Origin"));
+          if(req->path().rfind("/api/",0)==0&&req->method()==drogon::Options){auto response=drogon::HttpResponse::newHttpResponse();if(!allowedFrontend(req)){response->setStatusCode(drogon::k403Forbidden);}else{response->setStatusCode(drogon::k204NoContent);corsHeaders(req,response);response->addHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS");response->addHeader("Access-Control-Allow-Headers","Authorization, Content-Type, X-Ticket-Contact");response->addHeader("Access-Control-Max-Age","300");}stop(response);return;}next();
+        });
+        app.registerPreSendingAdvice([](const drogon::HttpRequestPtr& req,const drogon::HttpResponsePtr& response){corsHeaders(req,response);});
+
         app.registerPreRoutingAdvice([](const drogon::HttpRequestPtr& req,drogon::AdviceCallback&& stop,drogon::AdviceChainCallback&& next){
             auto path=req->path();std::transform(path.begin(),path.end(),path.begin(),[](unsigned char c){return std::tolower(c);});
             if(path.rfind("/captcha/",0)==0||path=="/captcha"){auto response=drogon::HttpResponse::newHttpResponse();response->setStatusCode(drogon::k404NotFound);stop(response);return;}next();

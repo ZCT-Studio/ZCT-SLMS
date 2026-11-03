@@ -26,7 +26,7 @@ curl http://localhost:17112/api/v1/ping
 ## 配置
 
 - 本机运行默认读取 `config/config.yaml`，也可通过程序第一个参数指定配置文件。
-- Docker 默认绑定 `127.0.0.1:17112`；使用 `ZCT_SLMS_BIND_ADDRESS` 和 `ZCT_SLMS_PORT` 调整宿主机监听地址、端口。
+- Docker 默认绑定 `127.0.0.1:17112`；使用 `ZCT_SLMS_CORE_BIND_ADDRESS` 和 `ZCT_SLMS_CORE_PORT` 调整宿主机监听地址、端口。
 - 平台设置管理运行配置、SMTP 和邮件模板；安全设置管理注册、第三方登录、2FA、人机验证与权限策略。
 - Microsoft、GitHub、短信、SMTP 等服务需填写自己的凭据。通行密钥需使用 HTTPS 或 localhost。
 
@@ -78,3 +78,15 @@ cmake --build build --config Release --parallel 2
 ## 许可证
 
 见 [LICENSE](LICENSE)。
+
+分域部署时，“前端可访问地址”用于邮件、登录完成返回和通行密钥来源；“后端可访问地址”用于 OAuth 回调，留空使用前端同域。仅配置的站点来源可跨域读取 API。前端需配置对应运行时 API 地址；OAuth 结果用短时票据与浏览器验证器交换，不依赖跨站 Cookie。
+
+## 环境变量命名
+
+运行变量统一为 `ZCT_SLMS_WEB_*`（前端）和 `ZCT_SLMS_CORE_*`（后端），构建参数统一为 `ZCT_SLMS_BUILD_*`。Vite 专用变量使用 `VITE_ZCT_SLMS_WEB_*`。Docker、GitHub 和 vcpkg 的标准变量保留工具要求的原名。完整分组、默认值和说明见 `.env.example`；旧名称不再读取，本地已有 `.env` 已转换变量名，配置值保持不变。
+
+## dotenv
+
+后端启动时自动读取当前工作目录的 `.env`，文件不存在时正常启动；系统环境变量优先，文件只补充未设置的变量。同一文件中重复定义时使用最后一个值，修改后需重启。支持 UTF-8/BOM、CRLF、注释、`export`、单/双引号及双引号中的 `\n`、`\r`、`\t` 转义；不执行命令或展开变量，不支持引号跨物理行。格式错误只报告行号，不显示配置值，并中止启动。
+
+`.env` 主要提供密钥、CA 路径等环境配置；业务配置仍使用 YAML。示例中的监听地址和端口变量用于 Compose 宿主机端口映射，直接运行时服务监听仍由 YAML 决定。Docker 通常由 Compose 将变量传入，无需把 `.env` 打入镜像。仓库仅提交 `.env.example`。

@@ -66,12 +66,12 @@ inline const std::vector<std::string> secrets = {
     "microsoft_secret"};
 inline std::string masterKey() {
   static const std::string key = []() {
-    const auto env = std::getenv("ZCT_SLMS_AUTH_MASTER_KEY");
-    if (env) {
+    const auto env = std::getenv("ZCT_SLMS_CORE_AUTH_MASTER_KEY");
+    if (env && *env) {
       auto raw = zct_slms::crypto::fromHex(env);
       if (raw.size() != 32)
         throw std::runtime_error(
-            "ZCT_SLMS_AUTH_MASTER_KEY 必须为 64 位十六进制字符");
+            "ZCT_SLMS_CORE_AUTH_MASTER_KEY 必须为 64 位十六进制字符");
       return raw;
     }
     const std::filesystem::path file = "data/auth-master.key";
@@ -176,7 +176,7 @@ struct Curl {
     curl_easy_setopt(h, CURLOPT_USERAGENT, "ZCT-SLMS/1.0");
     curl_easy_setopt(h, CURLOPT_SSL_OPTIONS,
                      static_cast<long>(CURLSSLOPT_NATIVE_CA));
-    if (const auto ca = std::getenv("ZCT_SLMS_AUTH_CA_BUNDLE"))
+    if (const auto ca = std::getenv("ZCT_SLMS_CORE_AUTH_CA_BUNDLE"); ca && *ca)
       curl_easy_setopt(h, CURLOPT_CAINFO, ca);
   }
   ~Curl() {
@@ -617,6 +617,7 @@ struct Flow {
   std::string provider, verifier, browser, publicUrl;
   int64_t user, expires;
   std::string mfa_id;
+  std::string backendUrl;
 };
 struct Ticket {
   Json result;
@@ -691,8 +692,14 @@ inline std::string baseUrl(const Json &c) {
                         std::regex("https://[A-Za-z0-9.-]+(:[0-9]+)?|http://"
                                    "(localhost|127\\.0\\.0\\.1)(:[0-9]+)?")))
     throw std::runtime_error(
-        "站点地址必须为 HTTPS 源地址，本机调试允许 HTTP localhost");
+        "可访问地址必须为 HTTPS 源地址，本机调试允许 HTTP localhost");
+  std::transform(url.begin()+url.find("://")+3,url.end(),url.begin()+url.find("://")+3,[](unsigned char ch){return static_cast<char>(std::tolower(ch));});
+  if((url.starts_with("https://")&&url.ends_with(":443"))||(url.starts_with("http://")&&url.ends_with(":80")))url.erase(url.rfind(':'));
   return url;
+}
+inline std::string backendBaseUrl(const Json &c) {
+  if(val(c,"backend_url").empty())return baseUrl(c);
+  auto backend=c;backend["public_url"]=c["backend_url"];return baseUrl(backend);
 }
 inline std::string callback(const std::string &origin,
                             const std::string &provider) {

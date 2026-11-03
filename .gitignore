@@ -36,3 +36,7 @@ node_modules/
 
 # Agent
 **.codex-*/
+
+.env
+.env.*
+!.env.example

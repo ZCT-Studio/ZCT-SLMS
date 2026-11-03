@@ -78,7 +78,7 @@ inline void settings(const Req &req, Callback &&callback) {
           return;
         }
         const std::vector<std::string> keys = {
-            "public_url",      "smtp_host",        "smtp_username",
+            "public_url", "backend_url", "smtp_host",        "smtp_username",
             "smtp_password",   "smtp_from",        "smtp_tls", "smtp_auth",
             "sms_provider",    "aliyun_key",       "aliyun_secret",
             "aliyun_sign",     "aliyun_template", "aliyun_reset_template", "twilio_sid",
@@ -118,6 +118,7 @@ inline void settings(const Req &req, Callback &&callback) {
           throw std::runtime_error("SMTP 必须启用 TLS");
         if (!val(c, "public_url").empty())
           baseUrl(c);
+        if (!val(c, "backend_url").empty()) backendBaseUrl(c);
         tenant(c);
         for (auto method : {"phone", "email", "github", "microsoft"})
           if (enabled(c, method) && !ready(c, method))
@@ -296,22 +297,24 @@ inline void oauthStart(const Req &req, Callback &&cb) {
     else if (intent != "login")
       throw std::runtime_error("无效登录操作");
     const auto origin = baseUrl(c), state = zct_slms::crypto::randomHex(32),
-               browser = zct_slms::crypto::randomHex(32),
+               browser = common::paramStr(req,"browser_challenge"),
                verifier = b64url(zct_slms::crypto::randomBytes(32));
+    if(!std::regex_match(browser,std::regex("[a-f0-9]{64}")))throw std::runtime_error("登录浏览器校验信息无效，请刷新前端后重试");
     {
       std::lock_guard lock(mutex);
       prune();
       rate("oauth:" + common::clientIp(req), 20, 60);
       flows[zct_slms::crypto::sha256Hex(state)] = {
-          provider, verifier, zct_slms::crypto::sha256Hex(browser),
+          provider, verifier, browser,
           origin,   uid,      now() + 600};
+      flows[zct_slms::crypto::sha256Hex(state)].backendUrl=backendBaseUrl(c);
       if (intent == "mfa")
         flows[zct_slms::crypto::sha256Hex(state)].mfa_id =
             common::paramStr(req, "challenge_id");
     }
     std::map<std::string, std::string> params = {
         {"client_id", c[provider + "_client"].asString()},
-        {"redirect_uri", callback(origin, provider)},
+        {"redirect_uri", callback(backendBaseUrl(c), provider)},
         {"state", state},
         {"response_type", "code"},
         {"code_challenge", b64url(zct_slms::crypto::sha256(verifier))},
@@ -327,11 +330,6 @@ inline void oauthStart(const Req &req, Callback &&cb) {
     auto resp =
         drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(out));
     resp->addHeader("Cache-Control", "no-store");
-    resp->addHeader("Set-Cookie",
-                    "zct_slms_oauth=" + browser +
-                        "; Path=/api/v1/auth/connect/; HttpOnly; SameSite=Lax; "
-                        "Max-Age=600" +
-                        (origin.rfind("https://", 0) == 0 ? "; Secure" : ""));
     cb(resp);
   } catch (const std::exception &e) {
     fail(cb, e.what());
@@ -341,15 +339,12 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
   background(req, std::move(callbackFn), [](auto req, const Callback &cb) {
     std::string origin;
     try {
-      const auto state = req->getParameter("state"),
-                 browser = req->getCookie("zct_slms_oauth");
+      const auto state = req->getParameter("state");
       Flow flow;
       {
         std::lock_guard lock(mutex);
         auto it = flows.find(zct_slms::crypto::sha256Hex(state));
-        if (it == flows.end() || it->second.expires < now() ||
-            !zct_slms::crypto::constantTimeEqual(it->second.browser,
-                                            zct_slms::crypto::sha256Hex(browser)))
+        if (it == flows.end() || it->second.expires < now())
           throw std::runtime_error("登录请求无效或已过期，请重新发起");
         flow = it->second;
         flows.erase(it);
@@ -362,7 +357,7 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
           req->getParameter("code").empty())
         throw std::runtime_error("第三方登录已取消或失败");
       auto c = config();
-      if (!ready(c, provider) || baseUrl(c) != origin)
+      if (!ready(c, provider) || baseUrl(c) != origin || backendBaseUrl(c)!=flow.backendUrl)
         throw std::runtime_error("登录配置已变更，请重试");
       const auto tokenUrl = provider == "github"
                                 ? "https://github.com/login/oauth/access_token"
@@ -374,7 +369,7 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
           {"code", req->getParameter("code")},
           {"code_verifier", flow.verifier},
           {"grant_type", "authorization_code"},
-          {"redirect_uri", callback(origin, provider)}};
+          {"redirect_uri", callback(backendBaseUrl(c), provider)}};
       auto token = http(tokenUrl, form(fields),
                         {"Accept: application/json",
                          "Content-Type: application/x-www-form-urlencoded"});
@@ -431,7 +426,7 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
                                                    now() + 60};
       }
       auto response = drogon::HttpResponse::newRedirectionResponse(
-          origin + "/?auth_ticket=" + escape(ticket));
+          origin + "/?auth_ticket=" + escape(ticket)+"&auth_binding="+escape(flow.browser));
       response->addHeader("Cache-Control", "no-store");
       response->addHeader("Referrer-Policy", "no-referrer");
       cb(response);
@@ -452,7 +447,7 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
 inline void exchange(const Req &req, Callback &&cb) {
   try {
     const auto key = zct_slms::crypto::sha256Hex(common::paramStr(req, "ticket")),
-               browser = zct_slms::crypto::sha256Hex(req->getCookie("zct_slms_oauth"));
+               browser = zct_slms::crypto::sha256Hex(common::paramStr(req,"browser_verifier"));
     Json result;
     {
       std::lock_guard lock(mutex);

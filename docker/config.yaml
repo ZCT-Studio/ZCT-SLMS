@@ -54,7 +54,7 @@ security:
   password_hasher: "argon2id"
 
   # AES 服务器密钥（生产环境请通过环境变量注入）
-  # server_aes_key_env: "ZCT_SLMS_AES_KEY"
+  # server_aes_key_env: "ZCT_SLMS_CORE_AES_KEY"
 
 rate_limit:
   enabled: true

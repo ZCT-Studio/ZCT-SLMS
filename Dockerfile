@@ -4,25 +4,25 @@ ENV DEBIAN_FRONTEND=noninteractive VCPKG_ROOT=/opt/vcpkg VCPKG_FORCE_SYSTEM_BINA
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake ninja-build git curl ca-certificates zip unzip tar \
     pkg-config autoconf automake libtool linux-libc-dev && rm -rf /var/lib/apt/lists/*
-ARG VCPKG_REF=2025.06.13
-RUN git clone --depth 1 --branch "${VCPKG_REF}" https://github.com/microsoft/vcpkg.git /opt/vcpkg \
+ARG ZCT_SLMS_BUILD_VCPKG_REF=2025.06.13
+RUN git clone --depth 1 --branch "${ZCT_SLMS_BUILD_VCPKG_REF}" https://github.com/microsoft/vcpkg.git /opt/vcpkg \
     && /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 RUN apt-get update && apt-get install -y --no-install-recommends bison flex \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
-ARG ZCT_SLMS_DATABASE_FEATURES=postgres;mysql
-ARG BUILD_JOBS=2
+ARG ZCT_SLMS_BUILD_DATABASE_FEATURES=postgres;mysql
+ARG ZCT_SLMS_BUILD_JOBS=2
 COPY vcpkg.json CMakeLists.txt ./
 COPY cmake/ cmake/
 COPY src/ src/
 COPY libs/ libs/
 RUN --mount=type=cache,target=/root/.cache/vcpkg \
     --mount=type=cache,target=/opt/vcpkg/downloads \
-    export VCPKG_MAX_CONCURRENCY="${BUILD_JOBS}" \
+    export VCPKG_MAX_CONCURRENCY="${ZCT_SLMS_BUILD_JOBS}" \
     && cmake -S . -B /build -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_TOOLCHAIN_FILE=/opt/vcpkg/scripts/buildsystems/vcpkg.cmake \
-    "-DVCPKG_MANIFEST_FEATURES=${ZCT_SLMS_DATABASE_FEATURES}" \
-    && cmake --build /build --parallel "${BUILD_JOBS}" \
+    "-DVCPKG_MANIFEST_FEATURES=${ZCT_SLMS_BUILD_DATABASE_FEATURES}" \
+    && cmake --build /build --parallel "${ZCT_SLMS_BUILD_JOBS}" \
     && strip /build/ZCT-SLMS \
     && mkdir -p /runtime-libs \
     && ldd /build/ZCT-SLMS > /tmp/runtime-deps \
