@@ -109,18 +109,38 @@ int main(const int argc, char** argv) {
             }
         }
 
-        {
-            const std::filesystem::path old_path = "./zct_slms_web";
-            const std::filesystem::path new_path = "./ZCT-SLMS-Web";
-            if (std::filesystem::exists(old_path) && !std::filesystem::exists(new_path)) {
-                std::filesystem::rename(old_path, new_path);
-            }
+        const auto web_root = std::filesystem::absolute("./ZCT-SLMS-Web");
+        const auto web_index = web_root / "index.html";
+        zct_slms::logger().INFO("Web document root: {}", web_root.string());
+        if (!std::filesystem::is_regular_file(web_index)) {
+            zct_slms::logger().WARN("Web index not found: {}. Extract the frontend release into this directory.", web_index.string());
         }
 
+        svr.setDefaultHandler([web_index](const drogon::HttpRequestPtr& req,
+                                        std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
+            const auto& path = req->path();
+            const auto reserved = [&path](const std::string_view prefix) {
+                return path == prefix || path.rfind(std::string(prefix) + "/", 0) == 0;
+            };
+            if ((req->method() == drogon::Get || req->method() == drogon::Head) &&
+                req->getHeader("Accept").find("text/html") != std::string::npos &&
+                path.find('.') == std::string::npos && path.find('\\') == std::string::npos &&
+                !reserved("/api") && !reserved("/assets") && !reserved("/uploads") &&
+                !reserved("/captcha") && std::filesystem::is_regular_file(web_index)) {
+                const auto response = drogon::HttpResponse::newFileResponse(web_index.string());
+                response->addHeader("Cache-Control", "no-store");
+                callback(response);
+                return;
+            }
+            const auto response = drogon::HttpResponse::newHttpResponse();
+            response->setStatusCode(drogon::k404NotFound);
+            callback(response);
+        });
         svr.setClientMaxBodySize(4 * 1024 * 1024);
         svr.setThreadNum(nthreads)
            .enableServerHeader(false)
-           .setDocumentRoot("./ZCT-SLMS-Web")
+           .setDocumentRoot(web_root.string())
+           .setHomePage("index.html")
            .run();
     } catch (const std::exception& e) {
         zct_slms::logger().FATAL("FATAL exception: {}", e.what());
