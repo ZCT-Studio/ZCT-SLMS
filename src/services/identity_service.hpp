@@ -456,8 +456,7 @@ inline void deliverEmail(const Json &c, const std::string &target,
     if (status == CURLE_LOGIN_DENIED && response == 334)
       throw std::runtime_error(
           "SMTP 认证交互未完成 " + detail +
-          "：334 是认证挑战响应，尚不能判定密码错误。请在邮件配置中选择 LOGIN 后重试；"
-          "QQ 邮箱自动模式已使用 LOGIN。若仍失败，请核对完整邮箱账号及有效授权码。");
+          "：认证挑战交互未完成，尚不能判定密码错误。请核对 SMTP 主机、TLS 模式、完整邮箱账号和授权码，并按服务商要求选择认证方式。");
     if (status == CURLE_LOGIN_DENIED)
       throw std::runtime_error(
           "SMTP 认证被拒绝 " + detail +

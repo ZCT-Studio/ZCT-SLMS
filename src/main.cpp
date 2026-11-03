@@ -82,7 +82,7 @@ int main(const int argc, char** argv) {
         }
         zct_slms::repo::ConfigRepo::set("app_secret_reveal_allowed",cfg.security().app_secret_reveal_allowed?"1":"0",std::time(nullptr));
         zct_slms::repo::ConfigRepo::set("admin_security_level",cfg.security().admin_security_level,std::time(nullptr));
-        try{auto identity=zct_slms::identity::config();const auto url=zct_slms::identity::val(identity,"public_url");if(url=="http://localhost:8088"||url=="http://127.0.0.1:8088"){identity["public_url"]=url.substr(0,url.rfind(':')+1)+"17316";zct_slms::identity::saveConfig(identity);}}catch(const std::exception&){zct_slms::logger().WARN("Local public URL migration skipped; check identity configuration master key");}
+        try{auto identity=zct_slms::identity::config();const auto url=zct_slms::identity::val(identity,"public_url");if(url=="http://localhost:8088"||url=="http://127.0.0.1:8088"){identity["public_url"]=url.substr(0,url.rfind(':')+1)+"17316";zct_slms::identity::saveConfig(identity);}}catch(const std::exception&){zct_slms::logger().WARN("Local frontend URL migration skipped; check identity configuration master key");}
         if(!zct_slms::repo::ConfigRepo::getBool("license_timer_initialized",false)){if(cfg.license().timer_paused)zct_slms::repo::GlobalTimer::pause(std::time(nullptr));zct_slms::repo::ConfigRepo::set("license_timer_initialized","1",std::time(nullptr));}
 
         zct_slms::logger().INFO("Registering routes...");

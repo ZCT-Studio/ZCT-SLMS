@@ -73,7 +73,7 @@ cmake --build build --config Release --parallel 2
 - 用户、子用户、管理员和支持账号及安全验证。
 - 工单、图片材料、邮件通知、内容审查与屏蔽词过滤。
 
-接口统一使用 `/api/v1/`。独立文档站与 GitHub Pages 部署暂时移除。
+接口统一使用 `/api/v1/`。后端独立文档站及其 Pages 工作流暂时移除，接口参考随前端静态包提供。
 
 ## 许可证
 
@@ -83,7 +83,7 @@ cmake --build build --config Release --parallel 2
 
 ## 环境变量命名
 
-运行变量统一为 `ZCT_SLMS_WEB_*`（前端）和 `ZCT_SLMS_CORE_*`（后端），构建参数统一为 `ZCT_SLMS_BUILD_*`。Vite 专用变量使用 `VITE_ZCT_SLMS_WEB_*`。Docker、GitHub 和 vcpkg 的标准变量保留工具要求的原名。完整分组、默认值和说明见 `.env.example`；旧名称不再读取，本地已有 `.env` 已转换变量名，配置值保持不变。
+运行变量统一为 `ZCT_SLMS_WEB_*`（前端）和 `ZCT_SLMS_CORE_*`（后端），构建参数统一为 `ZCT_SLMS_BUILD_*`。Vite 专用变量使用 `VITE_ZCT_SLMS_WEB_*`。Docker、GitHub 和 vcpkg 的标准变量保留工具要求的原名。完整分组、默认值和说明见 `.env.example`；旧变量名称不再读取。
 
 ## dotenv
 
