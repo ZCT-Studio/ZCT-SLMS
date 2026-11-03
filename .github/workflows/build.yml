@@ -121,7 +121,16 @@ jobs:
             - name: vcpkg install
               run: |
                   git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+                  # bootstrap downloads can fail transiently (for example HTTP 504).
+                  for attempt in 1 2 3 4; do
+                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                      break
+                    fi
+                    if [ "$attempt" -eq 4 ]; then
+                      exit 1
+                    fi
+                    sleep "$((attempt * 5))"
+                  done
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
               run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_BUILD_TYPE=Release
@@ -154,7 +163,16 @@ jobs:
             - name: vcpkg install
               run: |
                   git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+                  # bootstrap downloads can fail transiently (for example HTTP 504).
+                  for attempt in 1 2 3 4; do
+                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                      break
+                    fi
+                    if [ "$attempt" -eq 4 ]; then
+                      exit 1
+                    fi
+                    sleep "$((attempt * 5))"
+                  done
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x86-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
               run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-linux -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32
@@ -183,7 +201,16 @@ jobs:
             - name: vcpkg install
               run: |
                   git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+                  # bootstrap downloads can fail transiently (for example HTTP 504).
+                  for attempt in 1 2 3 4; do
+                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                      break
+                    fi
+                    if [ "$attempt" -eq 4 ]; then
+                      exit 1
+                    fi
+                    sleep "$((attempt * 5))"
+                  done
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
               run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=arm64-linux -DCMAKE_BUILD_TYPE=Release
@@ -216,7 +243,16 @@ jobs:
             - name: vcpkg install
               run: |
                   git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+                  # bootstrap downloads can fail transiently (for example HTTP 504).
+                  for attempt in 1 2 3 4; do
+                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                      break
+                    fi
+                    if [ "$attempt" -eq 4 ]; then
+                      exit 1
+                    fi
+                    sleep "$((attempt * 5))"
+                  done
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure (cross + filesystem preset)
               run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=arm-linux -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=arm -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ -DCXX_FILESYSTEM_NO_LINK_NEEDED=TRUE
@@ -237,7 +273,10 @@ jobs:
                   path: dist
     
     macos-arm64:
-        runs-on: macos-latest
+        # vcpkg 2025.06.13 / MariaDB 3.4.5 is incompatible with AppleClang 21.
+        runs-on: macos-15
+        env:
+            DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
         steps:
             - uses: actions/checkout@v4
               with: { submodules: recursive }
@@ -245,7 +284,16 @@ jobs:
             - name: vcpkg install
               run: |
                   git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+                  # bootstrap downloads can fail transiently (for example HTTP 504).
+                  for attempt in 1 2 3 4; do
+                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                      break
+                    fi
+                    if [ "$attempt" -eq 4 ]; then
+                      exit 1
+                    fi
+                    sleep "$((attempt * 5))"
+                  done
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-osx --x-manifest-root="${{ github.workspace }}"
             - name: Configure
               run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=arm64-osx -DCMAKE_BUILD_TYPE=Release
@@ -274,7 +322,16 @@ jobs:
             - name: vcpkg install
               run: |
                   git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+                  # bootstrap downloads can fail transiently (for example HTTP 504).
+                  for attempt in 1 2 3 4; do
+                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                      break
+                    fi
+                    if [ "$attempt" -eq 4 ]; then
+                      exit 1
+                    fi
+                    sleep "$((attempt * 5))"
+                  done
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-osx --x-manifest-root="${{ github.workspace }}"
             - name: Configure
               run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-osx -DCMAKE_BUILD_TYPE=Release
