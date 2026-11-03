@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2026 ZCT-Studio
+// Copyright (c) 2026 ZCT Studio
 
 //
 // Created by wanjiangzhi on 2026/9/26.
