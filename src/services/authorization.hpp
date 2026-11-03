@@ -1,7 +1,9 @@
 #pragma once
 #include "services/portal_auth.hpp"
+#include <string_view>
 namespace zct_slms::authorization {
 using namespace zct_slms::identity;
+inline constexpr std::string_view credentialPrefix = "zct_slms-auth:";
 namespace common = zct_slms::inside::api::v1::common;
 struct Proof {
   std::string session, ip, ua, fingerprint, account, policy;
@@ -195,11 +197,11 @@ inline bool verify(const Req &req, const std::string &credential) {
                account =
                    zct_slms::factors::accountKey(session["user_type"].asString(),
                                             session["user_id"].asInt64());
-    if (credential.starts_with("zct_slms-auth:")) {
+    if (credential.starts_with(credentialPrefix)) {
       Proof proof;
       {
         std::lock_guard lock(proofGuard);
-        auto it = proofs.find(zct_slms::crypto::sha256Hex(credential.substr(9)));
+        auto it = proofs.find(zct_slms::crypto::sha256Hex(credential.substr(credentialPrefix.size())));
         if (it == proofs.end())
           return false;
         proof = it->second;
@@ -238,10 +240,10 @@ inline bool verify(const Req &req, const std::string &credential) {
   }
 }
 inline bool consumeClosure(const Req &req, const std::string &credential) {
-  if (!credential.starts_with("zct_slms-auth:") || !verify(req, credential))
+  if (!credential.starts_with(credentialPrefix) || !verify(req, credential))
     return false;
   std::lock_guard lock(proofGuard);
-  auto it = proofs.find(zct_slms::crypto::sha256Hex(credential.substr(9)));
+  auto it = proofs.find(zct_slms::crypto::sha256Hex(credential.substr(credentialPrefix.size())));
   if (it == proofs.end() || !it->second.closure)
     return false;
   proofs.erase(it);

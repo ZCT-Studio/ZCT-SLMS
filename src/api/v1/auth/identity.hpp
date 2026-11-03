@@ -67,7 +67,7 @@ inline void settings(const Req &req, Callback &&callback) {
       auto c = config();
       if (req->method() == drogon::Post) {
         if (!adminPassword(req)) {
-          fail(cb, "当前管理员密码错误或操作过于频繁");
+          fail(cb, "管理员操作授权无效或已过期，请重新验证身份");
           return;
         }
         auto body = req->getJsonObject();
