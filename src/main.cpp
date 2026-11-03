@@ -24,6 +24,7 @@
 #include "constants.hpp"
 #include "common/logger.hpp"
 #include "config/app_config.hpp"
+#include "config/dotenv.hpp"
 #include "database/database.hpp"
 #include "api/v1/register_all.hpp"
 #include "middleware/middlewares.hpp"
@@ -65,6 +66,7 @@ namespace {
 
 int main(const int argc, char** argv) {
     try {
+        zct_slms::dotenv::load();
         zct_slms::logger().INFO("Server \"{}\" is starting, version {}", zct_slms::constants::PROJECT_NAME, zct_slms::constants::PROJECT_VERSION);
 
         const std::filesystem::path config_path = argc > 1 ? argv[1] : "config/config.yaml";
