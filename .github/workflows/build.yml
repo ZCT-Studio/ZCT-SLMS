@@ -27,7 +27,7 @@ jobs:
             - name: vcpkg install
               shell: pwsh
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-windows-static --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -63,7 +63,7 @@ jobs:
             - name: vcpkg install
               shell: pwsh
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x86-windows-static --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -99,7 +99,7 @@ jobs:
             - name: vcpkg install
               shell: pwsh
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-windows-static --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -134,7 +134,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -170,7 +170,7 @@ jobs:
                   sudo apt-get install -y gcc-multilib g++-multilib
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x86-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -202,7 +202,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -238,7 +238,7 @@ jobs:
                   sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure (cross + filesystem preset)
@@ -270,7 +270,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-osx --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -302,7 +302,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-osx --x-manifest-root="${{ github.workspace }}"
             - name: Configure
