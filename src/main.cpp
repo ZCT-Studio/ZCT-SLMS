@@ -109,10 +109,18 @@ int main(const int argc, char** argv) {
             }
         }
 
+        {
+            const std::filesystem::path old_path = "./zct_slms_web";
+            const std::filesystem::path new_path = "./ZCT-SLMS-Web";
+            if (std::filesystem::exists(old_path) && !std::filesystem::exists(new_path)) {
+                std::filesystem::rename(old_path, new_path);
+            }
+        }
+
         svr.setClientMaxBodySize(4 * 1024 * 1024);
         svr.setThreadNum(nthreads)
            .enableServerHeader(false)
-           .setDocumentRoot("./zct_slms_web")
+           .setDocumentRoot("./ZCT-SLMS-Web")
            .run();
     } catch (const std::exception& e) {
         zct_slms::logger().FATAL("FATAL exception: {}", e.what());
