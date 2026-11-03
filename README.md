@@ -38,6 +38,8 @@ Docker 使用 `zct_slms-config`、`zct_slms-data`、`zct_slms-logs` 卷保存配
 
 二进制发布仅保留 Linux x64、Linux ARM64、Windows x64。macOS、x86、ARMv7 和 Windows ARM64 不再构建或发布。
 
+Windows 发布包使用 ZIP，Linux 发布包使用 tar.gz；所有压缩包内以 "ZCT-SLMS/" 为顶层目录。分支 push 和 PR 仅构建二进制，Docker 镜像只在推送 "v*" tag 时构建、检查和发布。
+
 推送任意分支上的 `v*` tag 后，三个二进制平台构建成功，且两种 Linux 镜像完成启动检查后，发布 Docker 镜像索引和 Release。tag 含 `-` 为预发布，不更新 `latest`。
 
 | Docker 平台 | 独立镜像标签示例 |

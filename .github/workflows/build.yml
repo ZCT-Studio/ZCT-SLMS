@@ -123,6 +123,7 @@ jobs:
                   path: dist
     
     docker-linux:
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         name: Docker Linux ${{ matrix.arch }}
         needs: [windows-x64, linux-x64, linux-arm64]
         strategy:
@@ -242,20 +243,32 @@ jobs:
               shell: bash
               run: |
                   mkdir -p release
-                  for directory in artifacts/*; do
-                    test -d "$directory" || continue
-                    case "$(basename "$directory")" in
-                      *-windows-*) ;;
-                      *) chmod +x "$directory/ZCT-SLMS" ;;
+                  count=0
+                  for platform in ZCT-SLMS-windows-x64 ZCT-SLMS-linux-x64 ZCT-SLMS-linux-arm64; do
+                    directory="artifacts/$platform"
+                    test -d "$directory"
+                    package_dir="$(mktemp -d "$RUNNER_TEMP/zct-slms-package.XXXXXX")"
+                    mkdir -p "$package_dir/ZCT-SLMS"
+                    cp -a "$directory/." "$package_dir/ZCT-SLMS/"
+                    case "$platform" in
+                      *-windows-*)
+                        (cd "$package_dir" && zip -qr "$GITHUB_WORKSPACE/release/$platform.zip" ZCT-SLMS)
+                        ;;
+                      *)
+                        chmod +x "$package_dir/ZCT-SLMS/ZCT-SLMS"
+                        tar -czf "release/$platform.tar.gz" -C "$package_dir" ZCT-SLMS
+                        ;;
                     esac
-                    tar -czf "release/$(basename "$directory").tar.gz" -C "$directory" .
+                    count=$((count + 1))
                   done
-                  test -n "$(find release -name '*.tar.gz' -print -quit)"
+                  test "$count" -eq 3
             - name: Create Release
               uses: softprops/action-gh-release@v2
               with:
                   tag_name: ${{ github.ref_name }}
                   name: ZCT-SLMS ${{ github.ref_name }}
-                  files: release/*.tar.gz
+                  files: |
+                      release/*.zip
+                      release/*.tar.gz
                   fail_on_unmatched_files: true
                   prerelease: ${{ contains(github.ref_name, '-') }}
