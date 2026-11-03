@@ -109,14 +109,6 @@ int main(const int argc, char** argv) {
             }
         }
 
-        {
-            const std::filesystem::path old_path = "./zct_slms_web";
-            const std::filesystem::path new_path = "./ZCT-SLMS-Web";
-            if (std::filesystem::exists(old_path) && !std::filesystem::exists(new_path)) {
-                std::filesystem::rename(old_path, new_path);
-            }
-        }
-
         const auto web_root = std::filesystem::absolute("./ZCT-SLMS-Web");
         const auto web_index = web_root / "index.html";
         zct_slms::logger().INFO("Web document root: {}", web_root.string());
