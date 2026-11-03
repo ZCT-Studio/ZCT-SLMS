@@ -1,24 +1,19 @@
 name: Build and Release
 
 on:
-    push:
-        branches:
-            - dev
-        tags: ["v*"]
-    pull_request:
-        branches:
-            - main
-            - dev
-    workflow_dispatch:
+  push:
+    branches:
+      - '**'
+      - '!main'
+      - '!main-*'
+    tags: ['v*']
+  pull_request:
 
 permissions:
-    contents: write
+  contents: read
 
 jobs:
     windows-x64:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: windows-2022
         steps:
             - uses: actions/checkout@v4
@@ -27,7 +22,7 @@ jobs:
             - name: vcpkg install
               shell: pwsh
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-windows-static --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -52,9 +47,6 @@ jobs:
                   path: dist
     
     windows-x86:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: windows-2022
         steps:
             - uses: actions/checkout@v4
@@ -63,7 +55,7 @@ jobs:
             - name: vcpkg install
               shell: pwsh
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x86-windows-static --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -88,9 +80,6 @@ jobs:
                   path: dist
     
     windows-arm64:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: windows-11-arm
         steps:
             - uses: actions/checkout@v4
@@ -99,7 +88,7 @@ jobs:
             - name: vcpkg install
               shell: pwsh
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-windows-static --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -124,9 +113,6 @@ jobs:
                   path: dist
     
     linux-x64:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: ubuntu-24.04
         steps:
             - uses: actions/checkout@v4
@@ -134,7 +120,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -156,9 +142,6 @@ jobs:
                   path: dist
     
     linux-x86:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: ubuntu-24.04
         steps:
             - uses: actions/checkout@v4
@@ -170,7 +153,7 @@ jobs:
                   sudo apt-get install -y gcc-multilib g++-multilib
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x86-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -192,9 +175,6 @@ jobs:
                   path: dist
     
     linux-arm64:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: ubuntu-24.04-arm
         steps:
             - uses: actions/checkout@v4
@@ -202,7 +182,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -224,9 +204,6 @@ jobs:
                   path: dist
     
     linux-arm:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: ubuntu-24.04
         steps:
             - uses: actions/checkout@v4
@@ -238,7 +215,7 @@ jobs:
                   sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm-linux --x-manifest-root="${{ github.workspace }}"
             - name: Configure (cross + filesystem preset)
@@ -260,9 +237,6 @@ jobs:
                   path: dist
     
     macos-arm64:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: macos-latest
         steps:
             - uses: actions/checkout@v4
@@ -270,7 +244,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-osx --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -292,9 +266,6 @@ jobs:
                   path: dist
     
     macos-x64:
-        if: |
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
         runs-on: macos-15-intel
         steps:
             - uses: actions/checkout@v4
@@ -302,7 +273,7 @@ jobs:
             - uses: lukka/get-cmake@latest
             - name: vcpkg install
               run: |
-                  git clone https://github.com/microsoft/vcpkg.git
+                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
                   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
                   ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-osx --x-manifest-root="${{ github.workspace }}"
             - name: Configure
@@ -323,33 +294,75 @@ jobs:
                   name: ZCT-SLMS-macos-x64
                   path: dist
 
+    docker:
+        name: Docker build / tag publish
+        needs: [windows-x64, windows-x86, windows-arm64, linux-x64, linux-x86, linux-arm64, linux-arm, macos-arm64, macos-x64]
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v4
+              with: { submodules: recursive }
+            - uses: docker/setup-buildx-action@v3
+            - name: Docker metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ghcr.io/zct-studio/zct-slms
+                  tags: |
+                      type=ref,event=tag
+                      type=ref,event=pr
+                      type=sha,prefix=sha-
+                      type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+            - name: Log in to GHCR (tags only)
+              if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Build image; push only for v* tag
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: Dockerfile
+                  platforms: linux/amd64
+                  push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
     release:
-        if: |
-            startsWith(github.ref, 'refs/tags/v') &&
-            !contains(github.event.head_commit.message, ' --nobuild') &&
-            !contains(github.event.pull_request.title, ' --nobuild')
-        needs:
-            - windows-x64
-            - windows-x86
-            - windows-arm64
-            - linux-x64
-            - linux-x86
-            - linux-arm64
-            - linux-arm
-            - macos-arm64
-            - macos-x64
-        runs-on: ubuntu-latest
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        needs: [windows-x64, windows-x86, windows-arm64, linux-x64, linux-x86, linux-arm64, linux-arm, macos-arm64, macos-x64, docker]
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: write
         steps:
             - uses: actions/download-artifact@v4
               with:
+                  pattern: ZCT-SLMS-*
                   path: artifacts
-                  merge-multiple: true
-            - name: List Artifacts
-              run: ls -lah artifacts/
+            - name: Archive each platform separately
+              shell: bash
+              run: |
+                  mkdir -p release
+                  for directory in artifacts/*; do
+                    test -d "$directory" || continue
+                    case "$(basename "$directory")" in
+                      *-windows-*) ;;
+                      *) chmod +x "$directory/ZCT-SLMS" ;;
+                    esac
+                    tar -czf "release/$(basename "$directory").tar.gz" -C "$directory" .
+                  done
+                  test -n "$(find release -name '*.tar.gz' -print -quit)"
             - name: Create Release
               uses: softprops/action-gh-release@v2
               with:
                   tag_name: ${{ github.ref_name }}
                   name: ZCT-SLMS ${{ github.ref_name }}
-                  files: artifacts/*
+                  files: release/*.tar.gz
+                  fail_on_unmatched_files: true
                   prerelease: ${{ contains(github.ref_name, '-') }}

@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 zct_slms \
     && useradd --uid 10001 --gid zct_slms --no-create-home --shell /usr/sbin/nologin zct_slms
-COPY --from=build /runtime-libs/ /
+COPY --from=build /runtime-libs/lib/ /usr/lib/
 COPY --from=build /build/ZCT-SLMS /usr/local/bin/ZCT-SLMS
 WORKDIR /app
 COPY migrations/ migrations/
