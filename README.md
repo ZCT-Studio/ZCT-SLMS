@@ -90,3 +90,15 @@ cmake --build build --config Release --parallel 2
 后端启动时自动读取当前工作目录的 `.env`，文件不存在时正常启动；系统环境变量优先，文件只补充未设置的变量。同一文件中重复定义时使用最后一个值，修改后需重启。支持 UTF-8/BOM、CRLF、注释、`export`、单/双引号及双引号中的 `\n`、`\r`、`\t` 转义；不执行命令或展开变量，不支持引号跨物理行。格式错误只报告行号，不显示配置值，并中止启动。
 
 `.env` 主要提供密钥、CA 路径等环境配置；业务配置仍使用 YAML。示例中的监听地址和端口变量用于 Compose 宿主机端口映射，直接运行时服务监听仍由 YAML 决定。Docker 通常由 Compose 将变量传入，无需把 `.env` 打入镜像。仓库仅提交 `.env.example`。
+
+## 发布包内容
+
+二进制包包含程序、`config/config.yaml` 默认配置、`config/config.example.yaml`、完整 `migrations/`、`.env.example`、`README.md` 和 `LICENSE`。解压后在 `ZCT-SLMS/` 目录运行程序；需要环境变量时复制 `.env.example` 为 `.env`。更新时保留自己的配置、数据库和密钥，不要用包内默认配置覆盖现有配置。
+
+Docker 镜像已包含运行配置、数据库迁移和许可证；`.env.example` 是宿主机部署模板，随二进制包和源码提供，无需写入镜像。镜像不包含本地 `.env`、数据库、日志或账号密钥。
+
+## C++ 与 Linux 兼容性
+
+后端使用 C++20。Linux 发布在 Ubuntu 22.04 / Ubuntu 22.04 ARM64 上使用 GCC 13 构建（`std::format` 需要相应标准库支持），静态链接 libstdc++ 与 libgcc，避免要求部署系统升级 C++ 运行库。Ubuntu 22.04 与 Debian 12 的 x64、ARM64 运行兼容性由发布前手动检查。自行编译仍需支持 `std::format` 的 C++20 工具链。
+
+Docker 镜像拥有独立的用户空间，基础镜像版本不等同于宿主机系统要求。
