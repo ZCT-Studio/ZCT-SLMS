@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_MODELS_MODELS
-#define ZCT_SLMS_MODELS_MODELS
+#pragma once
 
 #include <optional>
 #include <string>
@@ -60,13 +54,13 @@ namespace zct_slms::models {
         std::string name;
         std::string description;
 
-        std::string secret;         // API secret (HMAC-SHA256 signing key)
+        std::string secret;            // API secret (HMAC-SHA256 signing key)
         std::string dec_mode = "NONE"; // NONE / AES256-GCM / BASE64 / HEX
-        std::string dec_key;        // hex-encoded AES-256 key (64 chars)
-        int sign_enable = 0;        // 0 = no verify, 1 = require HMAC-SHA256 on client APIs
+        std::string dec_key;           // hex-encoded AES-256 key (64 chars)
+        int sign_enable = 0;           // 0 = no verify, 1 = require HMAC-SHA256 on client APIs
 
         std::string binding_mode = "NONE"; // authoritative for license verify
-        std::string notice;         // app announcement text
+        std::string notice;                // app announcement text
 
         int status = 1;
         int64_t created_at = 0;
@@ -159,4 +153,3 @@ namespace zct_slms::models {
     };
 }
 
-#endif // ZCT_SLMS_MODELS_MODELS

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
 
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
 #include <exception>
 #include <filesystem>
 #include <string>
@@ -19,10 +15,6 @@
 #include "middleware/middlewares.hpp"
 
 namespace {
-    void ensureDirectory(const std::filesystem::path& path) {
-        try { std::filesystem::create_directories(path); } catch (...) {}
-    }
-
     bool bootstrapDatabase() {
         try {
             const auto& cfg = zct_slms::AppConfig::instance();

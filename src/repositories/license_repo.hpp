@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_REPOSITORIES_LICENSE_REPO
-#define ZCT_SLMS_REPOSITORIES_LICENSE_REPO
+#pragma once
 
 #include <cstdint>
 #include <ctime>
@@ -19,8 +13,7 @@
 #include "database/database.hpp"
 #include "models/models.hpp"
 
-namespace zct_slms::repo {
-    namespace row_helper {
+namespace zct_slms::repo { namespace row_helper {
         inline std::string findCol(const zct_slms::db::Row& r, const std::string& name) {
             for (auto& [k, v] : r) if (k == name) return v;
             return {};
@@ -106,8 +99,8 @@ namespace zct_slms::repo {
             if (license_str.empty()) return std::nullopt;
 
             const char* sql = app_id > 0
-                ? "SELECT id FROM licenses WHERE app_id = ? AND license = ? AND status != 'deleted'"
-                : "SELECT id FROM licenses WHERE license = ? AND status != 'deleted'";
+                                  ? "SELECT id FROM licenses WHERE app_id = ? AND license = ? AND status != 'deleted'"
+                                  : "SELECT id FROM licenses WHERE license = ? AND status != 'deleted'";
 
             if (app_id > 0) {
                 auto rows = zct_slms::db::Database::instance().queryParams(sql, app_id, license_str);
@@ -118,6 +111,7 @@ namespace zct_slms::repo {
             }
             return std::nullopt;
         }
+
         inline std::optional<zct_slms::models::License> findByAppAndLicense(
             int64_t app_id,
             const std::string& license
@@ -513,7 +507,5 @@ namespace zct_slms::repo {
             const int64_t virtual_now = now - offset - (now - paused_at);
             return paused_at > 0 ? virtual_now : (now - offset);
         }
-    }
-}
+    }}
 
-#endif // ZCT_SLMS_REPOSITORIES_LICENSE_REPO

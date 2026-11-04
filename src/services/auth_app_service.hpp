@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_SERVICES_AUTH_APP_SERVICE
-#define ZCT_SLMS_SERVICES_AUTH_APP_SERVICE
+#pragma once
 
 #include <string>
 #include <ctime>
@@ -33,7 +27,7 @@ namespace zct_slms::service {
         #else
         h = zct_slms::crypto::sha512Hex(salt + std::string(password) + salt);
         #endif
-        if(h.empty())throw std::runtime_error("密码哈希失败，请稍后重试");
+        if (h.empty())throw std::runtime_error("密码哈希失败，请稍后重试");
         return {h, salt};
     }
 
@@ -88,12 +82,13 @@ namespace zct_slms::service {
             std::string token = zct_slms::crypto::randomHex(32);
             std::string token_hash = zct_slms::crypto::sha256Hex(token);
 
-            const auto staff_role=repo::ConfigRepo::get("staff_role:"+std::to_string(admin->id),"ADMIN");repo::SessionRepo::insert(staff_role=="SUPPORT"?"SUPPORT":"ADMIN", admin->id, token_hash, now + ttl, now, ip, ua);
+            const auto staff_role = repo::ConfigRepo::get("staff_role:" + std::to_string(admin->id), "ADMIN");
+            repo::SessionRepo::insert(staff_role == "SUPPORT" ? "SUPPORT" : "ADMIN", admin->id, token_hash, now + ttl, now, ip, ua);
             repo::AdminRepo::updateLastLogin(admin->id, now);
 
             r.success = true;
             r.token = token;
-            r.user_type = staff_role=="SUPPORT"?"SUPPORT":"ADMIN";
+            r.user_type = staff_role == "SUPPORT" ? "SUPPORT" : "ADMIN";
             r.user_id = admin->id;
             r.username = admin->username;
             r.status = admin->status;
@@ -213,7 +208,7 @@ namespace zct_slms::service {
 
             if (u.user_type == "ADMIN" || u.user_type == "SUPPORT") {
                 auto a = repo::AdminRepo::findById(u.user_id);
-                if (!a || repo::ConfigRepo::get("staff_role:"+std::to_string(a->id),"ADMIN")!=u.user_type) return u;
+                if (!a || repo::ConfigRepo::get("staff_role:" + std::to_string(a->id), "ADMIN") != u.user_type) return u;
                 u.username = a->username;
                 u.status = a->status;
             } else if (u.user_type == "USER") {
@@ -226,7 +221,7 @@ namespace zct_slms::service {
                     "SELECT username, status, expires_at FROM sub_users WHERE id = ?",
                     u.user_id
                 );
-                if (rows.empty() || (repo::getInt(rows[0],"expires_at") != -1 && repo::getInt(rows[0],"expires_at") < std::time(nullptr))) return u;
+                if (rows.empty() || (repo::getInt(rows[0], "expires_at") != -1 && repo::getInt(rows[0], "expires_at") < std::time(nullptr))) return u;
                 u.username = repo::getStr(rows[0], "username");
                 u.status = static_cast<int>(repo::getInt(rows[0], "status"));
             }
@@ -236,7 +231,10 @@ namespace zct_slms::service {
             if (sess->expires_at < current_time + ttl - 300)
                 db::Database::instance().execParams(
                     "UPDATE sessions SET expires_at = ? WHERE token_hash = ? AND revoked = 0 AND expires_at > ?",
-                    current_time + ttl, token_hash, current_time);
+                    current_time + ttl,
+                    token_hash,
+                    current_time
+                );
             u.success = true;
             return u;
         }
@@ -307,7 +305,5 @@ namespace zct_slms::service {
             if (!app) return false;
             return secret_try == app->secret;
         }
-    }
-}
+    }}
 
-#endif // ZCT_SLMS_SERVICES_AUTH_APP_SERVICE

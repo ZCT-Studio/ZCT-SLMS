@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/27.
-//
-
-#ifndef ZCT_SLMS_API_V1_UIH
-#define ZCT_SLMS_API_V1_UIH
+#pragma once
 
 #include <exception>
 #include <functional>
@@ -25,4 +19,3 @@
 #include "services/security_service.hpp"
 #include "services/subuser_update_service.hpp"
 
-#endif //ZCT_SLMS_API_V1_UIH

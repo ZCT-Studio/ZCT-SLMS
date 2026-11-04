@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_API_V1_AUTH_ADMIN_LOGIN
-#define ZCT_SLMS_API_V1_AUTH_ADMIN_LOGIN
+#pragma once
 
 #include "api/v1/uih.h"
 
@@ -37,9 +31,8 @@ namespace zct_slms::inside::api::v1::auth::admin::login {
         v["user_id"] = r.user_id;
         v["username"] = r.username;
         v["force_setup"] = !zct_slms::repo::ConfigRepo::getBool("admin_initial_setup_done:" + std::to_string(r.user_id), true);
-        v=zct_slms::inside::api::v1::common::gateLogin(v,zct_slms::inside::api::v1::common::clientIp(req),zct_slms::inside::api::v1::common::clientUa(req));
+        v = zct_slms::inside::api::v1::common::gateLogin(v, zct_slms::inside::api::v1::common::clientIp(req), zct_slms::inside::api::v1::common::clientUa(req));
         cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // ZCT_SLMS_API_V1_AUTH_ADMIN_LOGIN

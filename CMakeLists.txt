@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 ZCT Studio
+
 cmake_minimum_required(VERSION 3.25)
 
 include(cmake/vcpkg_triplet.cmake)
@@ -5,18 +8,18 @@ include(cmake/vcpkg_triplet.cmake)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/VERSION")
 file(READ "${CMAKE_SOURCE_DIR}/VERSION" ZCT_SLMS_VERSION)
 string(STRIP "${ZCT_SLMS_VERSION}" ZCT_SLMS_VERSION)
-if(NOT ZCT_SLMS_VERSION MATCHES "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$")
+if (NOT ZCT_SLMS_VERSION MATCHES "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$")
     message(FATAL_ERROR "VERSION must be a valid semantic version")
-endif()
+endif ()
 set(ZCT_SLMS_NUMERIC_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
-if(ZCT_SLMS_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+-([^+]+)")
+if (ZCT_SLMS_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+-([^+]+)")
     string(REPLACE "." ";" _prerelease_identifiers "${CMAKE_MATCH_1}")
-    foreach(_identifier IN LISTS _prerelease_identifiers)
-        if(_identifier MATCHES "^0[0-9]+$")
+    foreach (_identifier IN LISTS _prerelease_identifiers)
+        if (_identifier MATCHES "^0[0-9]+$")
             message(FATAL_ERROR "Numeric prerelease identifiers cannot have leading zeroes")
-        endif()
-    endforeach()
-endif()
+        endif ()
+    endforeach ()
+endif ()
 project(ZCT-SLMS
     VERSION ${ZCT_SLMS_NUMERIC_VERSION}
     LANGUAGES CXX
@@ -49,20 +52,20 @@ target_link_libraries(ZCT-SLMS PRIVATE
 )
 
 target_compile_definitions(ZCT-SLMS PRIVATE ZCT_SLMS_HAS_ARGON2=1)
-if(MSVC)
+if (MSVC)
     target_compile_options(ZCT-SLMS PRIVATE /bigobj)
-endif()
+endif ()
 
 include(cmake/optional_backends.cmake)
 
-if(CMAKE_CROSSCOMPILING AND NOT MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12")
+if (CMAKE_CROSSCOMPILING AND NOT MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12")
         target_link_libraries(ZCT-SLMS PRIVATE stdc++fs)
-    endif()
-endif()
+    endif ()
+endif ()
 
-if(WIN32)
+if (WIN32)
     set_target_properties(ZCT-SLMS PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
-endif()
+endif ()

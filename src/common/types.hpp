@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_COMMON_TYPES
-#define ZCT_SLMS_COMMON_TYPES
+#pragma once
 
 #include <cstdint>
 #include <utility>
@@ -91,4 +85,3 @@ namespace zct_slms::common {
     };
 }
 
-#endif // ZCT_SLMS_COMMON_TYPES

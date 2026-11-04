@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_SERVICES_SUBUSER_UPDATE_SERVICE
-#define ZCT_SLMS_SERVICES_SUBUSER_UPDATE_SERVICE
+#pragma once
 
 #include "common/types.hpp"
 #include <string>
@@ -15,8 +9,7 @@
 #include <json/json.h>
 #include <format>
 
-namespace zct_slms::service {
-    namespace SubUserService {
+namespace zct_slms::service { namespace SubUserService {
         inline zct_slms::common::ResultOf<int64_t> create(
             int64_t parent_id,
             const std::string& username,
@@ -220,7 +213,5 @@ namespace zct_slms::service {
             out["release_time"] = static_cast<Json::Int64>(repo::getInt(r, "release_time"));
             return out;
         }
-    }
-}
+    }}
 
-#endif // ZCT_SLMS_SERVICES_SUBUSER_UPDATE_SERVICE

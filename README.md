@@ -30,7 +30,8 @@ curl http://localhost:17112/api/v1/ping
 - 平台设置管理运行配置、SMTP 和邮件模板；安全设置管理注册、第三方登录、2FA、人机验证与权限策略。
 - Microsoft、GitHub、短信、SMTP 等服务需填写自己的凭据。通行密钥需使用 HTTPS 或 localhost。
 
-Docker 使用 `zct_slms-config`、`zct_slms-data`、`zct_slms-logs` 卷保存配置、数据与日志。更新使用 `docker compose up -d --build`，停止使用 `docker compose down`。
+Docker 使用 `zct_slms-config`、`zct_slms-data`、`zct_slms-logs` 卷保存配置、数据与日志。更新使用
+`docker compose up -d --build`，停止使用 `docker compose down`。
 
 升级前备份数据库、配置与 `data/auth-master.key`；三者需配套恢复。`docker compose down -v` 会删除数据卷，不用于普通停止或升级。
 
@@ -38,16 +39,19 @@ Docker 使用 `zct_slms-config`、`zct_slms-data`、`zct_slms-logs` 卷保存配
 
 二进制发布仅保留 Linux x64、Linux ARM64、Windows x64。macOS、x86、ARMv7 和 Windows ARM64 不再构建或发布。
 
-Windows 发布包使用 ZIP，Linux 发布包使用 tar.gz；所有压缩包内以 "ZCT-SLMS/" 为顶层目录。分支 push 和 PR 仅构建二进制，Docker 镜像只在推送 "v*" tag 时构建、检查和发布。
+Windows 发布包使用 ZIP，Linux 发布包使用 tar.gz；所有压缩包内以 "ZCT-SLMS/" 为顶层目录。分支 push 和 PR 仅构建二进制，Docker
+镜像只在推送 "v*" tag 时构建、检查和发布。
 
-推送任意分支上的 `v*` tag 后，三个二进制平台构建成功，且两种 Linux 镜像完成启动检查后，发布 Docker 镜像索引和 Release。tag 含 `-` 为预发布，不更新 `latest`。
+推送任意分支上的 `v*` tag 后，三个二进制平台构建成功，且两种 Linux 镜像完成启动检查后，发布 Docker 镜像索引和 Release。tag 含
+`-` 为预发布，不更新 `latest`。
 
-| Docker 平台 | 独立镜像标签示例 |
-| --- | --- |
-| Linux x64 (`linux/amd64`) | `ghcr.io/zct-studio/zct-slms:v2.0.1-linux-amd64` |
+| Docker 平台                 | 独立镜像标签示例                                 |
+|-----------------------------|--------------------------------------------------|
+| Linux x64 (`linux/amd64`)   | `ghcr.io/zct-studio/zct-slms:v2.0.1-linux-amd64` |
 | Linux ARM64 (`linux/arm64`) | `ghcr.io/zct-studio/zct-slms:v2.0.1-linux-arm64` |
 
-公共版本标签（如 `:v2.0.1`，稳定版还有 `:latest`）包含这两种 Linux 架构，Docker 自动选择匹配的镜像。Windows x64 不发布 Windows 容器镜像；在 Windows 上使用 Docker Desktop 的 Linux containers 模式即可运行 Linux 镜像。版本号替换为已发布版本，例如：
+公共版本标签（如 `:v2.0.1`，稳定版还有 `:latest`）包含这两种 Linux 架构，Docker 自动选择匹配的镜像。Windows x64 不发布
+Windows 容器镜像；在 Windows 上使用 Docker Desktop 的 Linux containers 模式即可运行 Linux 镜像。版本号替换为已发布版本，例如：
 
 ```sh
 docker pull ghcr.io/zct-studio/zct-slms:v2.0.1
@@ -79,41 +83,55 @@ cmake --build build --config Release --parallel 2
 
 见 [LICENSE](LICENSE)。
 
-分域部署时，“前端可访问地址”用于邮件、登录完成返回和通行密钥来源；“后端可访问地址”用于 OAuth 回调，留空使用前端同域。仅配置的站点来源可跨域读取 API。前端需配置对应运行时 API 地址；OAuth 结果用短时票据与浏览器验证器交换，不依赖跨站 Cookie。
+分域部署时，“前端可访问地址”用于邮件、登录完成返回和通行密钥来源；“后端可访问地址”用于 OAuth 回调，留空使用前端同域。仅配置的站点来源可跨域读取
+API。前端需配置对应运行时 API 地址；OAuth 结果用短时票据与浏览器验证器交换，不依赖跨站 Cookie。
 
 ## 环境变量命名
 
-运行变量统一为 `ZCT_SLMS_WEB_*`（前端）和 `ZCT_SLMS_CORE_*`（后端），构建参数统一为 `ZCT_SLMS_BUILD_*`。Vite 专用变量使用 `VITE_ZCT_SLMS_WEB_*`。Docker、GitHub 和 vcpkg 的标准变量保留工具要求的原名。完整分组、默认值和说明见 `.env.example`；旧变量名称不再读取。
+运行变量统一为 `ZCT_SLMS_WEB_*`（前端）和 `ZCT_SLMS_CORE_*`（后端），构建参数统一为 `ZCT_SLMS_BUILD_*`。Vite 专用变量使用
+`VITE_ZCT_SLMS_WEB_*`。Docker、GitHub 和 vcpkg 的标准变量保留工具要求的原名。完整分组、默认值和说明见 `.env.example`
+；旧变量名称不再读取。
 
 ## dotenv
 
-后端启动时自动读取当前工作目录的 `.env`，文件不存在时正常启动；系统环境变量优先，文件只补充未设置的变量。同一文件中重复定义时使用最后一个值，修改后需重启。支持 UTF-8/BOM、CRLF、注释、`export`、单/双引号及双引号中的 `\n`、`\r`、`\t` 转义；不执行命令或展开变量，不支持引号跨物理行。格式错误只报告行号，不显示配置值，并中止启动。
+后端启动时自动读取当前工作目录的 `.env`，文件不存在时正常启动；系统环境变量优先，文件只补充未设置的变量。同一文件中重复定义时使用最后一个值，修改后需重启。支持
+UTF-8/BOM、CRLF、注释、`export`、单/双引号及双引号中的 `\n`、`\r`、`\t` 转义；不执行命令或展开变量，不支持引号跨物理行。格式错误只报告行号，不显示配置值，并中止启动。
 
-`.env` 主要提供密钥、CA 路径等环境配置；业务配置仍使用 YAML。示例中的监听地址和端口变量用于 Compose 宿主机端口映射，直接运行时服务监听仍由 YAML 决定。Docker 通常由 Compose 将变量传入，无需把 `.env` 打入镜像。仓库仅提交 `.env.example`。
+`.env` 主要提供密钥、CA 路径等环境配置；业务配置仍使用 YAML。示例中的监听地址和端口变量用于 Compose 宿主机端口映射，直接运行时服务监听仍由
+YAML 决定。Docker 通常由 Compose 将变量传入，无需把 `.env` 打入镜像。仓库仅提交 `.env.example`。
 
 ## 发布包内容
 
-二进制包包含程序、`config/config.yaml` 默认配置、`config/config.example.yaml`、完整 `migrations/`、`.env.example`、`README.md` 和 `LICENSE`。解压后在 `ZCT-SLMS/` 目录运行程序；需要环境变量时复制 `.env.example` 为 `.env`。更新时保留自己的配置、数据库和密钥，不要用包内默认配置覆盖现有配置。
+二进制包包含程序、`config/config.yaml` 默认配置、`config/config.example.yaml`、完整 `migrations/`、`.env.example`、
+`README.md` 和 `LICENSE`。解压后在 `ZCT-SLMS/` 目录运行程序；需要环境变量时复制 `.env.example` 为 `.env`
+。更新时保留自己的配置、数据库和密钥，不要用包内默认配置覆盖现有配置。
 
-Docker 镜像已包含运行配置、数据库迁移和许可证；`.env.example` 是宿主机部署模板，随二进制包和源码提供，无需写入镜像。镜像不包含本地 `.env`、数据库、日志或账号密钥。
+Docker 镜像已包含运行配置、数据库迁移和许可证；`.env.example` 是宿主机部署模板，随二进制包和源码提供，无需写入镜像。镜像不包含本地
+`.env`、数据库、日志或账号密钥。
 
 ## C++ 与 Linux 兼容性
 
-后端使用 C++20。Linux 发布在 Ubuntu 22.04 / Ubuntu 22.04 ARM64 上使用 GCC 13 构建（`std::format` 需要相应标准库支持），静态链接 libstdc++ 与 libgcc，避免要求部署系统升级 C++ 运行库。Ubuntu 22.04 与 Debian 12 的 x64、ARM64 运行兼容性由发布前手动检查。自行编译仍需支持 `std::format` 的 C++20 工具链。
+后端使用 C++20。Linux 发布在 Ubuntu 22.04 / Ubuntu 22.04 ARM64 上使用 GCC 13 构建（`std::format` 需要相应标准库支持），静态链接
+libstdc++ 与 libgcc，避免要求部署系统升级 C++ 运行库。Ubuntu 22.04 与 Debian 12 的 x64、ARM64 运行兼容性由发布前手动检查。自行编译仍需支持
+`std::format` 的 C++20 工具链。
 
 Docker 镜像拥有独立的用户空间，基础镜像版本不等同于宿主机系统要求。
 
 ## 后端托管前端
 
-将前端静态发布包解压到后端工作目录，确保 `ZCT-SLMS-Web/index.html` 存在（不要再多套一层同名目录）。从该工作目录启动后端，访问后端端口即可打开页面；React 页面路径支持直接访问和刷新。API 与不存在的资源仍返回 404。启动日志会打印实际静态目录。
+将前端静态发布包解压到后端工作目录，确保 `ZCT-SLMS-Web/index.html` 存在（不要再多套一层同名目录）。从该工作目录启动后端，访问后端端口即可打开页面；React
+页面路径支持直接访问和刷新。API 与不存在的资源仍返回 404。启动日志会打印实际静态目录。
 
 同域托管时，`runtime-config.js` 的 `apiBaseUrl` 留空。Docker 可将前端目录只读挂载到 `/app/ZCT-SLMS-Web`，前端仍可独立更新。
 
 ## Google 与 Telegram OAuth
 
-安全设置支持 Google Web OAuth 客户端和 Telegram OIDC（BotFather Login Widget，RS256）。回调地址使用后端可访问地址，分别加 `/api/v1/auth/connect/callback/google`、`/api/v1/auth/connect/callback/telegram`。Telegram 还需在 Allowed URLs 中登记前端源地址及完整回调。客户端密钥加密保存，普通配置读取不返回明文。
+安全设置支持 Google Web OAuth 客户端和 Telegram OIDC（BotFather Login Widget，RS256）。回调地址使用后端可访问地址，分别加
+`/api/v1/auth/connect/callback/google`、`/api/v1/auth/connect/callback/telegram`。Telegram 还需在 Allowed URLs
+中登记前端源地址及完整回调。客户端密钥加密保存，普通配置读取不返回明文。
 
-两者沿用 state、PKCE、短时一次性票据及浏览器验证器，支持自动注册、账号绑定、二次验证与解绑工单；第三方登录不要求人机验证。Telegram ID Token 使用固定官方 JWKS 验签并校验发行方、客户端、有效期和 nonce，不信任未经验证的 JWT 内容。
+两者沿用 state、PKCE、短时一次性票据及浏览器验证器，支持自动注册、账号绑定、二次验证与解绑工单；第三方登录不要求人机验证。Telegram
+ID Token 使用固定官方 JWKS 验签并校验发行方、客户端、有效期和 nonce，不信任未经验证的 JWT 内容。
 
 版本号统一修改根目录 `VERSION`（支持 `2.2.0-beta.1` 等 SemVer 预发布版本）；CMake 配置时生成版本头文件，供程序和构建使用。
 

@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/10/3.
-//
-
-#ifndef ZCT_SLMS_DATABASE_DATABASE
-#define ZCT_SLMS_DATABASE_DATABASE
+#pragma once
 
 #include <cstddef>
 #include <ctime>
@@ -31,7 +25,6 @@
 #endif
 
 namespace zct_slms::db {
-
     // ── 门面类：持有一个 IDatabase 实例，repo/service 层零改动 ──
     class Database {
     public:
@@ -43,7 +36,10 @@ namespace zct_slms::db {
         // 根据 config 创建后端
         void open(const zct_slms::DatabaseConfig& cfg) {
             std::unique_lock lock(mtx_);
-            if (impl_) { impl_->close(); impl_.reset(); }
+            if (impl_) {
+                impl_->close();
+                impl_.reset();
+            }
 
             auto type = cfg.type;
             if (type == "sqlite") {
@@ -54,11 +50,14 @@ namespace zct_slms::db {
                 impl_ = std::move(s);
                 zct_slms::logger().INFO("Database opened: SQLite {}", std::filesystem::absolute(cfg.sqlite_path).string());
             } else if (type == "postgresql") {
-#ifdef ZCT_SLMS_HAS_PGSQL
+                #ifdef ZCT_SLMS_HAS_PGSQL
                 auto& pg = cfg.pgsql;
                 std::string conninfo = std::format(
                     "host={} port={} dbname={} user={} password={} sslmode={} application_name=ZCT_SLMS",
-                    pg.host, pg.port, pg.dbname, pg.user,
+                    pg.host,
+                    pg.port,
+                    pg.dbname,
+                    pg.user,
                     pg.password.empty() ? "" : ("password=" + pg.password),
                     pg.sslmode
                 );
@@ -66,23 +65,28 @@ namespace zct_slms::db {
                 s->open(conninfo);
                 impl_ = std::move(s);
                 zct_slms::logger().INFO("Database opened: PostgreSQL {}@{}:{}/{}", pg.user, pg.host, pg.port, pg.dbname);
-#else
+                #else
                 throw SQLException("ZCT_SLMS was compiled without PostgreSQL support (ZCT_SLMS_HAS_PGSQL not defined)");
-#endif
+                #endif
             } else if (type == "mysql") {
-#ifdef ZCT_SLMS_HAS_MYSQL
+                #ifdef ZCT_SLMS_HAS_MYSQL
                 auto& my = cfg.mysql;
                 std::string conninfo = std::format(
                     "{}:{}:{}:{}:{}:{}",
-                    my.host, my.port, my.user, my.password, my.dbname, my.connect_timeout_sec
+                    my.host,
+                    my.port,
+                    my.user,
+                    my.password,
+                    my.dbname,
+                    my.connect_timeout_sec
                 );
                 auto s = std::make_unique<MysqlDatabase>();
                 s->open(conninfo);
                 impl_ = std::move(s);
                 zct_slms::logger().INFO("Database opened: MySQL {}@{}:{}/{}", my.user, my.host, my.port, my.dbname);
-#else
+                #else
                 throw SQLException("ZCT_SLMS was compiled without MySQL support (ZCT_SLMS_HAS_MYSQL not defined)");
-#endif
+                #endif
             } else {
                 throw SQLException(std::format("Unsupported database.type: {}", type));
             }
@@ -90,7 +94,10 @@ namespace zct_slms::db {
 
         void close() {
             std::unique_lock lock(mtx_);
-            if (impl_) { impl_->close(); impl_.reset(); }
+            if (impl_) {
+                impl_->close();
+                impl_.reset();
+            }
         }
 
         const char* backendName() const {
@@ -178,13 +185,19 @@ namespace zct_slms::db {
                     zct_slms::logger().WARN(
                         "No backend-specific migrations/{}/ dir found, "
                         "falling back to plain {} (all SQLs must be cross-DB compatible).",
-                        backend_dir, migrationsDir);
+                        backend_dir,
+                        migrationsDir
+                    );
                     target_dir = migrationsDir;
                     use_plain = true;
                 } else {
-                    throw SQLException(std::format(
-                        "Migration dir not found: {}. Expected migrations/{}/001_initial.sql",
-                        target_dir, backend_dir));
+                    throw SQLException(
+                        std::format(
+                            "Migration dir not found: {}. Expected migrations/{}/001_initial.sql",
+                            target_dir,
+                            backend_dir
+                        )
+                    );
                 }
             }
 
@@ -216,7 +229,9 @@ namespace zct_slms::db {
                     int64_t now = std::time(nullptr);
                     db.execParams(
                         "INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
-                        version, f_name, now
+                        version,
+                        f_name,
+                        now
                     );
                     zct_slms::logger().INFO("[{}] Migration applied: {}", backend, f_name);
                 } catch (const std::exception& e) {
@@ -228,14 +243,15 @@ namespace zct_slms::db {
             if (use_plain) {
                 zct_slms::logger().WARN(
                     "Consider splitting migrations into migrations/{}/ for full backend-specific control.",
-                    backend_dir);
+                    backend_dir
+                );
             }
         }
 
     private:
         static std::string backendDirName(const char* backend) {
             if (std::string_view(backend) == "postgresql") return "pgsql";
-            if (std::string_view(backend) == "mysql")      return "mysql";
+            if (std::string_view(backend) == "mysql") return "mysql";
             return "sqlite";
         }
 
@@ -243,23 +259,22 @@ namespace zct_slms::db {
             // 三种后端各自的建表方言
             if (std::string_view(backend) == "postgresql") {
                 return "CREATE TABLE IF NOT EXISTS schema_migrations ("
-                       "version BIGSERIAL PRIMARY KEY, "
-                       "name TEXT NOT NULL UNIQUE, "
-                       "applied_at BIGINT NOT NULL)";
+                    "version BIGSERIAL PRIMARY KEY, "
+                    "name TEXT NOT NULL UNIQUE, "
+                    "applied_at BIGINT NOT NULL)";
             } else if (std::string_view(backend) == "mysql") {
                 return "CREATE TABLE IF NOT EXISTS schema_migrations ("
-                       "version BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                       "name VARCHAR(255) NOT NULL UNIQUE, "
-                       "applied_at BIGINT NOT NULL) "
-                       "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+                    "version BIGINT PRIMARY KEY AUTO_INCREMENT, "
+                    "name VARCHAR(255) NOT NULL UNIQUE, "
+                    "applied_at BIGINT NOT NULL) "
+                    "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             }
             // sqlite 默认
             return "CREATE TABLE IF NOT EXISTS schema_migrations ("
-                   "version INTEGER PRIMARY KEY, "
-                   "name TEXT NOT NULL UNIQUE, "
-                   "applied_at INTEGER NOT NULL)";
+                "version INTEGER PRIMARY KEY, "
+                "name TEXT NOT NULL UNIQUE, "
+                "applied_at INTEGER NOT NULL)";
         }
     };
 }
 
-#endif // ZCT_SLMS_DATABASE_DATABASE

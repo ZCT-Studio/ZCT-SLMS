@@ -1,32 +1,32 @@
 services:
-  verifier:
-    build:
-      context: .
-      args:
-        ZCT_SLMS_BUILD_DATABASE_FEATURES: "${ZCT_SLMS_BUILD_DATABASE_FEATURES:-postgres;mysql}"
-        ZCT_SLMS_BUILD_JOBS: "${ZCT_SLMS_BUILD_JOBS:-2}"
-        ZCT_SLMS_BUILD_VCPKG_REF: "${ZCT_SLMS_BUILD_VCPKG_REF:-2025.06.13}"
-    environment:
-      ZCT_SLMS_CORE_AUTH_MASTER_KEY: "${ZCT_SLMS_CORE_AUTH_MASTER_KEY:-}"
-      ZCT_SLMS_CORE_AUTH_CA_BUNDLE: "${ZCT_SLMS_CORE_AUTH_CA_BUNDLE:-}"
-      ZCT_SLMS_CORE_AES_KEY: "${ZCT_SLMS_CORE_AES_KEY:-}"
-    image: zct-slms:local
-    restart: unless-stopped
-    init: true
-    ports:
-      - "${ZCT_SLMS_CORE_BIND_ADDRESS:-127.0.0.1}:${ZCT_SLMS_CORE_PORT:-17112}:17112"
-    volumes:
-      - zct_slms-config:/app/config
-      - zct_slms-data:/app/data
-      - zct_slms-logs:/app/logs
-    stop_grace_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    verifier:
+        build:
+            context: .
+            args:
+                ZCT_SLMS_BUILD_DATABASE_FEATURES: "${ZCT_SLMS_BUILD_DATABASE_FEATURES:-postgres;mysql}"
+                ZCT_SLMS_BUILD_JOBS: "${ZCT_SLMS_BUILD_JOBS:-2}"
+                ZCT_SLMS_BUILD_VCPKG_REF: "${ZCT_SLMS_BUILD_VCPKG_REF:-2025.06.13}"
+        environment:
+            ZCT_SLMS_CORE_AUTH_MASTER_KEY: "${ZCT_SLMS_CORE_AUTH_MASTER_KEY:-}"
+            ZCT_SLMS_CORE_AUTH_CA_BUNDLE: "${ZCT_SLMS_CORE_AUTH_CA_BUNDLE:-}"
+            ZCT_SLMS_CORE_AES_KEY: "${ZCT_SLMS_CORE_AES_KEY:-}"
+        image: zct-slms:local
+        restart: unless-stopped
+        init: true
+        ports:
+            - "${ZCT_SLMS_CORE_BIND_ADDRESS:-127.0.0.1}:${ZCT_SLMS_CORE_PORT:-17112}:17112"
+        volumes:
+            - zct_slms-config:/app/config
+            - zct_slms-data:/app/data
+            - zct_slms-logs:/app/logs
+        stop_grace_period: 30s
+        logging:
+            driver: json-file
+            options:
+                max-size: "10m"
+                max-file: "3"
 
 volumes:
-  zct_slms-config:
-  zct_slms-data:
-  zct_slms-logs:
+    zct_slms-config:
+    zct_slms-data:
+    zct_slms-logs:

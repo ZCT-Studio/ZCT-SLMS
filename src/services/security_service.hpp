@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_SERVICES_SECURITY_SERVICE
-#define ZCT_SLMS_SERVICES_SECURITY_SERVICE
+#pragma once
 
 #include <deque>
 #include <cstdlib>
@@ -17,8 +11,7 @@
 #include <unordered_map>
 #include "common/types.hpp"
 
-namespace zct_slms::service {
-    namespace SecurityService {
+namespace zct_slms::service { namespace SecurityService {
         inline std::string canonicalRequest(
             const std::string_view method,
             const std::string_view path,
@@ -147,4 +140,3 @@ namespace zct_slms::service {
     };
 }
 
-#endif // ZCT_SLMS_SERVICES_SECURITY_SERVICE

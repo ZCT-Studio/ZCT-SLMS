@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_API_RESPONSE
-#define ZCT_SLMS_API_RESPONSE
+#pragma once
 
 #include <utility>
 #include <string>
@@ -82,4 +76,3 @@ namespace zct_slms::api {
     #endif
 }
 
-#endif // ZCT_SLMS_API_RESPONSE

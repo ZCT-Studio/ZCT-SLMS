@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_COMMON_FORMATTERS_HPP
-#define ZCT_SLMS_COMMON_FORMATTERS_HPP
+#pragma once
 
 #include <array>
 #include <ctime>
@@ -72,4 +66,3 @@ namespace zct_slms::logging {
     };
 }
 
-#endif // ZCT_SLMS_COMMON_FORMATTERS_HPP

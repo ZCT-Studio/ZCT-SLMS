@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_DATABASE_SQLITE_DATABASE
-#define ZCT_SLMS_DATABASE_SQLITE_DATABASE
+#pragma once
 
 #include "database/idatabase.hpp"
 #include <sqlite3.h>
@@ -16,7 +10,6 @@
 #include <vector>
 
 namespace zct_slms::db {
-
     class SqliteDatabase : public IDatabase {
     public:
         const char* backendName() const override { return "sqlite"; }
@@ -28,7 +21,10 @@ namespace zct_slms::db {
             constexpr int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX;
             if (sqlite3_open_v2(path.c_str(), &db_, flags, nullptr) != SQLITE_OK) {
                 auto msg = db_ ? sqlite3_errmsg(db_) : "unknown";
-                if (db_) { sqlite3_close_v2(db_); db_ = nullptr; }
+                if (db_) {
+                    sqlite3_close_v2(db_);
+                    db_ = nullptr;
+                }
                 throw SQLException(std::format("sqlite open [{}] failed: {}", path, msg));
             }
             sqlite3_exec(db_, "PRAGMA journal_mode=DELETE;", nullptr, nullptr, nullptr);
@@ -39,7 +35,10 @@ namespace zct_slms::db {
 
         void close() override {
             std::unique_lock lock(mtx_);
-            if (db_) { sqlite3_close_v2(db_); db_ = nullptr; }
+            if (db_) {
+                sqlite3_close_v2(db_);
+                db_ = nullptr;
+            }
             open_ = false;
         }
 
@@ -98,6 +97,7 @@ namespace zct_slms::db {
     protected:
         void beginTransaction() override { exec("BEGIN IMMEDIATE"); }
         void commitTransaction() override { exec("COMMIT"); }
+
         void rollbackTransaction() override {
             if (!sqlite3_get_autocommit(db_)) exec("ROLLBACK");
         }
@@ -148,11 +148,15 @@ namespace zct_slms::db {
         static void bindAll(sqlite3_stmt* stmt, const std::vector<std::string>& params) {
             for (size_t i = 0; i < params.size(); ++i) {
                 const auto& v = params[i];
-                sqlite3_bind_text(stmt, static_cast<int>(i + 1), v.data(),
-                                  static_cast<int>(v.size()), SQLITE_TRANSIENT);
+                sqlite3_bind_text(
+                    stmt,
+                    static_cast<int>(i + 1),
+                    v.data(),
+                    static_cast<int>(v.size()),
+                    SQLITE_TRANSIENT
+                );
             }
         }
     };
 }
 
-#endif // ZCT_SLMS_DATABASE_SQLITE_DATABASE

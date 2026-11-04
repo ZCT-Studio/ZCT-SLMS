@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_API_V1_LICENSE_LIST
-#define ZCT_SLMS_API_V1_LICENSE_LIST
+#pragma once
 
 #include <exception>
 #include <functional>
@@ -34,9 +28,11 @@ namespace zct_slms::inside::api::v1::license::list {
         auto appid_str = zct_slms::inside::api::v1::common::paramStr(req, "app_id");
         auto app = zct_slms::repo::AppRepo::findByAppid(appid_str);
         if (!app) {
-            cb(drogon::HttpResponse::newHttpJsonResponse(
-                zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "app_id 对应的 APP 不存在")
-            ));
+            cb(
+                drogon::HttpResponse::newHttpJsonResponse(
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "app_id 对应的 APP 不存在")
+                )
+            );
             return;
         }
         const int64_t app_id = app->id;
@@ -44,10 +40,18 @@ namespace zct_slms::inside::api::v1::license::list {
         const int64_t cur_user_id = zct_slms::inside::api::v1::common::currentUserId(req);
         bool allowed = user_type == "ADMIN" || (user_type == "USER" && app->owner_id == cur_user_id);
         if (user_type == "SUBUSER") {
-            const auto assigned = zct_slms::db::Database::instance().queryParams("SELECT p.app_id FROM user_app_permissions p JOIN sub_users s ON s.id = p.sub_user_id WHERE p.sub_user_id = ? AND p.app_id = ? AND s.parent_id = ?",cur_user_id,app->id,app->owner_id);
+            const auto assigned = zct_slms::db::Database::instance().queryParams(
+                "SELECT p.app_id FROM user_app_permissions p JOIN sub_users s ON s.id = p.sub_user_id WHERE p.sub_user_id = ? AND p.app_id = ? AND s.parent_id = ?",
+                cur_user_id,
+                app->id,
+                app->owner_id
+            );
             allowed = !assigned.empty();
         }
-        if (!allowed) { cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(zct_slms::api::ErrorCode::UNAUTHORIZED,"无权查看此应用卡密"))); return; }
+        if (!allowed) {
+            cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(zct_slms::api::ErrorCode::UNAUTHORIZED, "无权查看此应用卡密")));
+            return;
+        }
 
         std::vector<zct_slms::models::License> lics;
         if (user_type == "SUBUSER") {
@@ -79,13 +83,13 @@ namespace zct_slms::inside::api::v1::license::list {
 
             if (l.created_by_role == "SUBUSER") {
                 auto su_rows = zct_slms::db::Database::instance().queryParams(
-                    "SELECT username FROM sub_users WHERE id = ?", l.created_by
+                    "SELECT username FROM sub_users WHERE id = ?",
+                    l.created_by
                 );
                 std::string creator = su_rows.empty() ? "subuser" : repo::getStr(su_rows[0], "username");
                 if (user_type == "SUBUSER" && l.created_by == cur_user_id) {
                     creator += '*';
-                } else if (user_type == "OWNER") {
-                }
+                } else if (user_type == "OWNER") {}
                 v["creator"] = creator;
             } else {
                 auto owner = zct_slms::repo::UserRepo::findById(l.created_by);
@@ -101,4 +105,3 @@ namespace zct_slms::inside::api::v1::license::list {
     }
 }
 
-#endif // ZCT_SLMS_API_V1_LICENSE_LIST

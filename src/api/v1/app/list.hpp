@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_API_V1_APP_LIST
-#define ZCT_SLMS_API_V1_APP_LIST
+#pragma once
 
 #include "api/v1/uih.h"
 #include "services/app_secret_policy.hpp"
@@ -56,7 +50,8 @@ namespace zct_slms::inside::api::v1::app::list {
             }
             if (user_type == "SUBUSER") {
                 auto su_rows = zct_slms::db::Database::instance().queryParams(
-                    "SELECT parent_id FROM sub_users WHERE id = ?", cur_user_id
+                    "SELECT parent_id FROM sub_users WHERE id = ?",
+                    cur_user_id
                 );
                 if (!su_rows.empty()) {
                     int64_t parent_id = repo::getInt(su_rows[0], "parent_id");
@@ -74,4 +69,3 @@ namespace zct_slms::inside::api::v1::app::list {
     }
 }
 
-#endif // ZCT_SLMS_API_V1_APP_LIST

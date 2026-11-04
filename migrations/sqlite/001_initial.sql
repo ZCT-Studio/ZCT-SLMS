@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: BSD-3-Clause
+-- Copyright (c) 2026 ZCT Studio
+
 -- ZCT-SLMS 初始数据库结构
 -- 此文件定义首次安装使用的基础表结构
 

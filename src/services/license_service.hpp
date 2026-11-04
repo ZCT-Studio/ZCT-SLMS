@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_SERVICES_LICENSE_SERVICE
-#define ZCT_SLMS_SERVICES_LICENSE_SERVICE
+#pragma once
 
 #include <optional>
 #include <string>
@@ -36,6 +30,7 @@ namespace zct_slms::service {
         std::string remark;
         std::string license_type;
     };
+
     // 优先用 id，否则用明文卡密查 id
     inline std::optional<int64_t> resolveLicenseId(
         int64_t license_id,
@@ -44,6 +39,7 @@ namespace zct_slms::service {
     ) {
         return repo::LicenseRepo::resolveLicenseId(license_id, license_plain, app_id);
     }
+
     namespace LicenseService {
         inline int64_t virtualNow() {
             return repo::GlobalTimer::effectiveNow(std::time(nullptr));
@@ -67,14 +63,14 @@ namespace zct_slms::service {
             int unbind_limit = 0;
             int unbind_time_cost = 0;
             int unbind_count_cost = 0;
-            int license_length = 32; // 卡密长度 8-256
+            int license_length = 32;  // 卡密长度 8-256
             std::string license_type; // 自由字符串标识
         };
 
         struct CreateBatchResult {
             bool success{};
             int64_t actual_created = 0;
-            std::string first_license_plain; // 返回第一条明文卡密用于通知
+            std::string first_license_plain;         // 返回第一条明文卡密用于通知
             std::vector<std::string> plain_licenses; // 返回全部明文卡密
             std::string error;
         };
@@ -141,10 +137,10 @@ namespace zct_slms::service {
                         );
                         if (rows.empty()) return false;
                         main_user_id = repo::getInt(rows[0], "parent_id");
-                        auto quota=db::Database::instance().queryParams("SELECT quota_limit,quota_used FROM sub_users WHERE id = ?",in.owner_id);
-                        if(quota.empty())return false;
-                        const auto limit=repo::getInt(quota[0],"quota_limit"),used=repo::getInt(quota[0],"quota_used");
-                        if(used>INT64_MAX-total_cost||(limit!=-1&&(used>limit||total_cost>limit-used)))return false;
+                        auto quota = db::Database::instance().queryParams("SELECT quota_limit,quota_used FROM sub_users WHERE id = ?", in.owner_id);
+                        if (quota.empty())return false;
+                        const auto limit = repo::getInt(quota[0], "quota_limit"), used = repo::getInt(quota[0], "quota_used");
+                        if (used > INT64_MAX - total_cost || (limit != -1 && (used > limit || total_cost > limit - used)))return false;
                     }
 
                     if (int64_t new_balance = repo::UserRepo::atomicConsumeBalance(main_user_id, total_cost); new_balance == -1 && total_cost > 0) {
@@ -554,7 +550,5 @@ namespace zct_slms::service {
             repo::LicenseRepo::updateFieldInt(license_id, "unbind_limit", new_limit);
             return zct_slms::common::Result::ok();
         }
-    }
-}
+    }}
 
-#endif // ZCT_SLMS_SERVICES_LICENSE_SERVICE

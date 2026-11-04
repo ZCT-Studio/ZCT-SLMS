@@ -1,50 +1,27 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
 
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-
-
 #ifndef ZCT_SLMS_REPOSITORIES_USER_APP_REPO
-
 #define ZCT_SLMS_REPOSITORIES_USER_APP_REPO
-
-
 
 #include <utility>
 #include <functional>
-
 #include <optional>
-
 #include <string>
-
 #include <ctime>
-
 #include <vector>
-
 #include <cstdint>
-
 #include <algorithm>
-
 #include "common/types.hpp"
-
 #include "database/database.hpp"
-
 #include "models/models.hpp"
-
 #include "repositories/license_repo.hpp"  // 提供 getInt/getStr/getOptInt/getOptStr
 
-
-
 namespace zct_slms::repo {
-    inline std::function<void(const std::string&)> validatePublicText=[](const std::string&){};
+    inline std::function<void(const std::string &)> validatePublicText = [](const std::string&) {};
 
     namespace AdminRepo {
-
         inline std::optional<zct_slms::models::Admin> findByUsername(const std::string& u) {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM admins WHERE username = ?",
@@ -78,13 +55,10 @@ namespace zct_slms::repo {
             a.status = static_cast<int>(getInt(r, "status"));
 
             return a;
-
         }
 
 
-
         inline std::optional<zct_slms::models::Admin> findById(int64_t id) {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM admins WHERE id = ?",
@@ -118,9 +92,7 @@ namespace zct_slms::repo {
             a.status = static_cast<int>(getInt(r, "status"));
 
             return a;
-
         }
-
 
 
         inline int64_t insert(
@@ -136,7 +108,6 @@ namespace zct_slms::repo {
             int64_t now
 
         ) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "INSERT INTO admins(username, password_hash, salt, display_name, created_at, updated_at, status)"
@@ -158,13 +129,10 @@ namespace zct_slms::repo {
             );
 
             return zct_slms::db::Database::instance().lastInsertId();
-
         }
 
 
-
         inline void updateLastLogin(int64_t id, int64_t now) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "UPDATE admins SET last_login_at = ? WHERE id = ?",
@@ -174,11 +142,8 @@ namespace zct_slms::repo {
                 id
 
             );
-
         }
-
     } // namespace AdminRepo
-
 
 
     // ============================================================
@@ -188,9 +153,7 @@ namespace zct_slms::repo {
     // ============================================================
 
     namespace UserRepo {
-
         inline std::optional<zct_slms::models::User> findByUsername(const std::string& u) {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM users WHERE username = ?",
@@ -228,13 +191,10 @@ namespace zct_slms::repo {
             user.updated_at = getInt(r, "updated_at");
 
             return user;
-
         }
 
 
-
         inline std::optional<zct_slms::models::User> findById(int64_t id) {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM users WHERE id = ?",
@@ -272,9 +232,7 @@ namespace zct_slms::repo {
             user.updated_at = getInt(r, "updated_at");
 
             return user;
-
         }
-
 
 
         inline int64_t insert(
@@ -292,8 +250,8 @@ namespace zct_slms::repo {
             int64_t created_by = 0
 
         ) {
-
-            validatePublicText(username);validatePublicText(display);
+            validatePublicText(username);
+            validatePublicText(display);
             zct_slms::db::Database::instance().execParams(
 
                 "INSERT INTO users(username, password_hash, salt, display_name, balance, expires_at, status, created_by, created_at, updated_at)"
@@ -317,13 +275,10 @@ namespace zct_slms::repo {
             );
 
             return zct_slms::db::Database::instance().lastInsertId();
-
         }
 
 
-
         inline void addBalance(int64_t id, int64_t delta, int64_t now) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "UPDATE users SET balance = balance + ?, updated_at = ? WHERE id = ?",
@@ -335,13 +290,10 @@ namespace zct_slms::repo {
                 id
 
             );
-
         }
 
 
-
         inline void setBalance(int64_t id, int64_t value, int64_t now) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "UPDATE users SET balance = ?, updated_at = ? WHERE id = ?",
@@ -353,13 +305,10 @@ namespace zct_slms::repo {
                 id
 
             );
-
         }
 
 
-
         inline void setExpires(int64_t id, int64_t expires_at, int64_t now) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "UPDATE users SET expires_at = ?, updated_at = ? WHERE id = ?",
@@ -371,13 +320,10 @@ namespace zct_slms::repo {
                 id
 
             );
-
         }
 
 
-
         inline int64_t atomicConsumeBalance(int64_t id, int64_t amount) {
-
             // 注意：调用者必须已在 transaction 中（避免 SQLite 嵌套 BEGIN）
 
             auto cur = zct_slms::db::Database::instance().queryScalar(
@@ -413,11 +359,8 @@ namespace zct_slms::repo {
             );
 
             return new_balance;
-
         }
-
     } // namespace UserRepo
-
 
 
     // ============================================================
@@ -427,9 +370,7 @@ namespace zct_slms::repo {
     // ============================================================
 
     namespace AppRepo {
-
         inline std::optional<zct_slms::models::App> findByAppid(const std::string& appid) {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps WHERE appid = ?",
@@ -455,7 +396,6 @@ namespace zct_slms::repo {
             a.description = getStr(r, "description");
 
 
-
             a.secret = getStr(r, "secret");
 
             a.dec_mode = getStr(r, "dec_mode");
@@ -475,13 +415,10 @@ namespace zct_slms::repo {
             a.updated_at = getInt(r, "updated_at");
 
             return a;
-
         }
 
 
-
         inline std::optional<zct_slms::models::App> findById(int64_t id) {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps WHERE id = ?",
@@ -507,7 +444,6 @@ namespace zct_slms::repo {
             a.description = getStr(r, "description");
 
 
-
             a.secret = getStr(r, "secret");
 
             a.dec_mode = getStr(r, "dec_mode");
@@ -527,29 +463,26 @@ namespace zct_slms::repo {
             a.updated_at = getInt(r, "updated_at");
 
             return a;
-
         }
-
 
 
         inline int64_t insert(
 
-        int64_t owner_id,
+            int64_t owner_id,
 
-        const std::string& appid,
+            const std::string& appid,
 
-        const std::string& name,
+            const std::string& name,
 
-        const std::string& desc,
+            const std::string& desc,
 
-        const std::string& secret,
+            const std::string& secret,
 
-        int64_t now,
+            int64_t now,
 
-        const std::string& binding_mode = "NONE"
+            const std::string& binding_mode = "NONE"
 
         ) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "INSERT INTO apps(owner_id, appid, name, description, secret, binding_mode, status, created_at, updated_at)"
@@ -575,13 +508,10 @@ namespace zct_slms::repo {
             );
 
             return zct_slms::db::Database::instance().lastInsertId();
-
         }
 
 
-
         inline void updateAppSecret(int64_t id, const std::string& new_secret, int64_t now) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "UPDATE apps SET secret = ?, updated_at = ? WHERE id = ?",
@@ -593,13 +523,10 @@ namespace zct_slms::repo {
                 id
 
             );
-
         }
 
 
-
         inline void updateBindingMode(int64_t id, const std::string& mode, int64_t now) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "UPDATE apps SET binding_mode = ?, updated_at = ? WHERE id = ?",
@@ -611,7 +538,6 @@ namespace zct_slms::repo {
                 id
 
             );
-
         }
 
 
@@ -644,12 +570,7 @@ namespace zct_slms::repo {
         }
 
 
-        
-
-
-
         inline void setStatus(int64_t id, int status, int64_t now) {
-
             zct_slms::db::Database::instance().execParams(
 
                 "UPDATE apps SET status = ?, updated_at = ? WHERE id = ?",
@@ -661,13 +582,10 @@ namespace zct_slms::repo {
                 id
 
             );
-
         }
 
 
-
         inline std::vector<zct_slms::models::App> listByOwner(int64_t owner_id) {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps WHERE owner_id = ? ORDER BY id DESC",
@@ -679,7 +597,6 @@ namespace zct_slms::repo {
             std::vector<zct_slms::models::App> out;
 
             for (auto& r : rows) {
-
                 zct_slms::models::App a;
 
                 a.id = getInt(r, "id");
@@ -691,7 +608,6 @@ namespace zct_slms::repo {
                 a.name = getStr(r, "name");
 
                 a.description = getStr(r, "description");
-
 
 
                 a.secret = getStr(r, "secret");
@@ -713,25 +629,18 @@ namespace zct_slms::repo {
                 a.updated_at = getInt(r, "updated_at");
 
                 out.push_back(std::move(a));
-
             }
 
             return out;
-
         }
-
 
 
         inline void removeById(int64_t id) {
-
             zct_slms::db::Database::instance().execParams("DELETE FROM apps WHERE id = ?", id);
-
         }
 
 
-
         inline std::vector<zct_slms::models::App> listAll() {
-
             auto rows = zct_slms::db::Database::instance().queryParams(
 
                 "SELECT * FROM apps ORDER BY id DESC"
@@ -741,7 +650,6 @@ namespace zct_slms::repo {
             std::vector<zct_slms::models::App> out;
 
             for (auto& r : rows) {
-
                 zct_slms::models::App a;
 
                 a.id = getInt(r, "id");
@@ -773,18 +681,11 @@ namespace zct_slms::repo {
                 a.updated_at = getInt(r, "updated_at");
 
                 out.push_back(std::move(a));
-
             }
 
             return out;
-
         }
-
-    }
-
-}
-
+    }}
 
 
 #endif // ZCT_SLMS_REPOSITORIES_USER_APP_REPO
-

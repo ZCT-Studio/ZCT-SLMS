@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_COMMON_EXECUTORS_HPP
-#define ZCT_SLMS_COMMON_EXECUTORS_HPP
+#pragma once
 
 #include <filesystem>
 #include <fstream>
@@ -66,4 +60,3 @@ namespace zct_slms::logging {
     };
 }
 
-#endif // ZCT_SLMS_COMMON_EXECUTORS_HPP

@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_API_V1_CLIENT_LICENSE_REMAINING
-#define ZCT_SLMS_API_V1_CLIENT_LICENSE_REMAINING
+#pragma once
 
 #include "api/v1/uih.h"
 
@@ -43,4 +37,3 @@ namespace zct_slms::inside::api::v1::client::license::remaining {
     }
 }
 
-#endif // ZCT_SLMS_API_V1_CLIENT_LICENSE_REMAINING

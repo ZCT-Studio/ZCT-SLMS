@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/10/3.
-//
-
-#ifndef ZCT_SLMS_DATABASE_IDATABASE
-#define ZCT_SLMS_DATABASE_IDATABASE
+#pragma once
 
 #include <exception>
 #include <fstream>
@@ -20,7 +14,6 @@
 #include <vector>
 
 namespace zct_slms::db {
-
     class SQLException : public std::runtime_error {
     public:
         using std::runtime_error::runtime_error;
@@ -124,12 +117,11 @@ namespace zct_slms::db {
         }
 
         inline void packVec(std::vector<std::string>& /*out*/) {}
+
         template <typename T, typename... Rest>
         void packVec(std::vector<std::string>& out, T&& v, Rest&&... rest) {
             out.push_back(anyToString(std::forward<T>(v)));
             packVec(out, std::forward<Rest>(rest)...);
         }
-    }
-}
+    }}
 
-#endif // ZCT_SLMS_DATABASE_IDATABASE

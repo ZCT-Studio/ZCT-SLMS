@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_COMMON_LOGGER_HPP
-#define ZCT_SLMS_COMMON_LOGGER_HPP
+#pragma once
 
 #pragma push_macro("ALL")
 #pragma push_macro("ERROR")
@@ -154,9 +148,9 @@ namespace zct_slms {
         std::initializer_list<ZCLibLog::executor> executors{std::move(ex)};
 
         if (async) {
-            loggerStorage().emplace(std::in_place_index<1>, zct_slms::constants::PROJECT_NAME, executors, level_cfg);
+            loggerStorage().emplace(std::in_place_index < 1 >, zct_slms::constants::PROJECT_NAME, executors, level_cfg);
         } else {
-            loggerStorage().emplace(std::in_place_index<0>, zct_slms::constants::PROJECT_NAME, executors, level_cfg);
+            loggerStorage().emplace(std::in_place_index < 0 >, zct_slms::constants::PROJECT_NAME, executors, level_cfg);
         }
     }
 
@@ -165,7 +159,7 @@ namespace zct_slms {
         auto& s = loggerStorage();
         if (!s) {
             s.emplace(
-                std::in_place_index<0>,
+                std::in_place_index < 0 >,
                 zct_slms::constants::PROJECT_NAME,
                 std::initializer_list<ZCLibLog::executor>{
                     ZCLibLog::executor::make<zct_slms::logging::zct_slms_executor>(std::string{}, true)
@@ -174,17 +168,23 @@ namespace zct_slms {
         }
         return Logger(&*s);
     }
+
     inline std::atomic<ZCLibLog::LogLevel> apiLogLevel{ZCLibLog::LogLevel::DEBUG};
-    template<class... Args>inline void apiLog(std::format_string<Args...> format,Args&&... args){
-        switch(apiLogLevel.load()){
-            case ZCLibLog::LogLevel::TRACE:logger().TRACE(format,std::forward<Args>(args)...);break;
-            case ZCLibLog::LogLevel::INFO:logger().INFO(format,std::forward<Args>(args)...);break;
-            case ZCLibLog::LogLevel::WARN:logger().WARN(format,std::forward<Args>(args)...);break;
-            case ZCLibLog::LogLevel::ERROR:logger().ERROR(format,std::forward<Args>(args)...);break;
-            case ZCLibLog::LogLevel::OFF:break;
-            default:logger().DEBUG(format,std::forward<Args>(args)...);break;
+
+    template <class... Args> inline void apiLog(std::format_string<Args...> format, Args&&... args) {
+        switch (apiLogLevel.load()) {
+            case ZCLibLog::LogLevel::TRACE: logger().TRACE(format, std::forward<Args>(args)...);
+                break;
+            case ZCLibLog::LogLevel::INFO: logger().INFO(format, std::forward<Args>(args)...);
+                break;
+            case ZCLibLog::LogLevel::WARN: logger().WARN(format, std::forward<Args>(args)...);
+                break;
+            case ZCLibLog::LogLevel::ERROR: logger().ERROR(format, std::forward<Args>(args)...);
+                break;
+            case ZCLibLog::LogLevel::OFF: break;
+            default: logger().DEBUG(format, std::forward<Args>(args)...);
+                break;
         }
     }
 }
 
-#endif // ZCT_SLMS_COMMON_LOGGER_HPP

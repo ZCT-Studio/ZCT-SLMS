@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/10/3.
-//
-
-#ifndef ZCT_SLMS_DATABASE_PGSQL_DATABASE
-#define ZCT_SLMS_DATABASE_PGSQL_DATABASE
+#pragma once
 
 #include "database/idatabase.hpp"
 #include <libpq-fe.h>
@@ -15,7 +9,6 @@
 #include <vector>
 
 namespace zct_slms::db {
-
     class PgsqlDatabase : public IDatabase {
     public:
         const char* backendName() const override { return "postgresql"; }
@@ -73,10 +66,15 @@ namespace zct_slms::db {
             checkOpen();
             const auto adapted = adaptParams(sql);
             auto res = PQexecParams(
-                pg_, adapted.c_str(), static_cast<int>(params.size()),
-                nullptr, // paramTypes
+                pg_,
+                adapted.c_str(),
+                static_cast<int>(params.size()),
+                nullptr,
+                // paramTypes
                 vectorParamCstr(params).data(),
-                nullptr, nullptr, // paramLens, paramFormats
+                nullptr,
+                nullptr,
+                // paramLens, paramFormats
                 0 // resultFormat: 0=text
             );
             if (!res) throw SQLException("pgsql PQexecParams failed (null result)");
@@ -102,9 +100,14 @@ namespace zct_slms::db {
             checkOpen();
             const auto adapted = adaptParams(sql);
             auto res = PQexecParams(
-                pg_, adapted.c_str(), static_cast<int>(params.size()),
-                nullptr, vectorParamCstr(params).data(),
-                nullptr, nullptr, 0
+                pg_,
+                adapted.c_str(),
+                static_cast<int>(params.size()),
+                nullptr,
+                vectorParamCstr(params).data(),
+                nullptr,
+                nullptr,
+                0
             );
             return collectRows(res);
         }
@@ -121,9 +124,14 @@ namespace zct_slms::db {
             }
             const auto adapted = adaptParams(sql);
             auto res = PQexecParams(
-                pg_, adapted.c_str(), static_cast<int>(params.size()),
-                nullptr, vectorParamCstr(params).data(),
-                nullptr, nullptr, 0
+                pg_,
+                adapted.c_str(),
+                static_cast<int>(params.size()),
+                nullptr,
+                vectorParamCstr(params).data(),
+                nullptr,
+                nullptr,
+                0
             );
             return pickScalar(res);
         }
@@ -136,16 +144,42 @@ namespace zct_slms::db {
             bool in_single = false, in_double = false, in_line_comment = false, in_block_comment = false;
             for (size_t i = 0; i < sql.size(); ++i) {
                 const char c = sql[i];
-                if (in_line_comment) { out += c; if (c == '\n') in_line_comment = false; continue; }
-                if (in_block_comment) {
+                if (in_line_comment) {
                     out += c;
-                    if (c == '*' && i + 1 < sql.size() && sql[i + 1] == '/') { out += '/'; ++i; in_block_comment = false; }
+                    if (c == '\n') in_line_comment = false;
                     continue;
                 }
-                if (c == '-' && i + 1 < sql.size() && sql[i + 1] == '-') { in_line_comment = true; out += "--"; ++i; continue; }
-                if (c == '/' && i + 1 < sql.size() && sql[i + 1] == '*') { in_block_comment = true; out += "/*"; ++i; continue; }
-                if (!in_double && c == '\'') { in_single = !in_single; out += c; continue; }
-                if (!in_single && c == '"') { in_double = !in_double; out += c; continue; }
+                if (in_block_comment) {
+                    out += c;
+                    if (c == '*' && i + 1 < sql.size() && sql[i + 1] == '/') {
+                        out += '/';
+                        ++i;
+                        in_block_comment = false;
+                    }
+                    continue;
+                }
+                if (c == '-' && i + 1 < sql.size() && sql[i + 1] == '-') {
+                    in_line_comment = true;
+                    out += "--";
+                    ++i;
+                    continue;
+                }
+                if (c == '/' && i + 1 < sql.size() && sql[i + 1] == '*') {
+                    in_block_comment = true;
+                    out += "/*";
+                    ++i;
+                    continue;
+                }
+                if (!in_double && c == '\'') {
+                    in_single = !in_single;
+                    out += c;
+                    continue;
+                }
+                if (!in_single && c == '"') {
+                    in_double = !in_double;
+                    out += c;
+                    continue;
+                }
                 if (c == '?' && !in_single && !in_double) {
                     out += '$';
                     out += std::to_string(idx++);
@@ -167,7 +201,10 @@ namespace zct_slms::db {
         mutable int rows_changed_ = 0;
 
         void closeLocked() {
-            if (pg_) { PQfinish(pg_); pg_ = nullptr; }
+            if (pg_) {
+                PQfinish(pg_);
+                pg_ = nullptr;
+            }
             open_ = false;
         }
 
@@ -200,8 +237,10 @@ namespace zct_slms::db {
                 for (int c = 0; c < ncols; ++c) {
                     const char* col_name = PQfname(res, c);
                     const char* val = PQgetvalue(res, r, c);
-                    row.emplace_back(col_name ? col_name : std::to_string(c),
-                                     val ? val : (PQgetisnull(res, r, c) ? "" : std::string{}));
+                    row.emplace_back(
+                        col_name ? col_name : std::to_string(c),
+                        val ? val : (PQgetisnull(res, r, c) ? "" : std::string{})
+                    );
                 }
                 out.push_back(std::move(row));
             }
@@ -212,7 +251,10 @@ namespace zct_slms::db {
         std::optional<std::string> pickScalar(PGresult* res) const {
             if (!res) return std::nullopt;
             auto st = PQresultStatus(res);
-            if (st != PGRES_COMMAND_OK && st != PGRES_TUPLES_OK) { PQclear(res); return std::nullopt; }
+            if (st != PGRES_COMMAND_OK && st != PGRES_TUPLES_OK) {
+                PQclear(res);
+                return std::nullopt;
+            }
             std::optional<std::string> v;
             if (PQntuples(res) > 0 && PQnfields(res) > 0) {
                 const char* val = PQgetvalue(res, 0, 0);
@@ -231,4 +273,3 @@ namespace zct_slms::db {
     };
 }
 
-#endif // ZCT_SLMS_DATABASE_PGSQL_DATABASE

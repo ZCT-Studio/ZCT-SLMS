@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: BSD-3-Clause
+-- Copyright (c) 2026 ZCT Studio
+
 -- ZCT-SLMS 初始数据库结构
 -- 此文件定义首次安装使用的基础表结构
 
@@ -500,49 +503,65 @@ CREATE TABLE IF NOT EXISTS system_config
 );
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('license_timer_paused',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('license_timer_paused',
         '0',
         '全局暂停卡密计时 (0=运行 1=暂停)',
-        EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+        EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('license_timer_paused_at',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('license_timer_paused_at',
         '0',
         '上次暂停时刻 Unix timestamp',
-        EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+        EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('license_timer_offset',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('license_timer_offset',
         '0',
         '累积暂停偏移秒数',
-        EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+        EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('admin_security_level',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('admin_security_level',
         'LAN',
         '管理接口安全等级 LOCAL/LAN/PUBLIC',
-        EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+        EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('replay_window_seconds',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('replay_window_seconds',
         '60',
         'Nonce 重放时间窗口（秒）',
-        EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+        EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('api_rate_limit_ip_per_sec',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('api_rate_limit_ip_per_sec',
         '100',
         '单 IP API 限流 (req/s)',
-        EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+        EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('api_rate_limit_app_per_sec',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('api_rate_limit_app_per_sec',
         '500',
         '单 APP API 限流 (req/s)',
-        EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+        EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;
 
 
-INSERT INTO system_config(key, value, description, updated_at) VALUES('api_rate_limit_license_per_sec',
+INSERT INTO system_config(key, value, description, updated_at)
+VALUES ('api_rate_limit_license_per_sec',
         '10',
         '单卡密限流 (req/s)'
-           , EXTRACT(EPOCH FROM NOW())::BIGINT) ON CONFLICT (key) DO NOTHING;
+           , EXTRACT(EPOCH FROM NOW())::BIGINT)
+ON CONFLICT (key) DO NOTHING;

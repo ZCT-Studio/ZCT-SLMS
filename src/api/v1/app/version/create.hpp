@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/10/2.
-//
-
-#ifndef ZCT_SLMS_API_V1_APP_VERSION_CREATE
-#define ZCT_SLMS_API_V1_APP_VERSION_CREATE
+#pragma once
 
 #include "api/v1/uih.h"
 
@@ -32,15 +26,21 @@ namespace zct_slms::inside::api::v1::app::version::create_ {
         const int64_t release_time = zct_slms::inside::api::v1::common::paramI64(req, "release_time", std::time(nullptr));
 
         if (version.empty() || url.empty()) {
-            cb(drogon::HttpResponse::newHttpJsonResponse(
-                zct_slms::api::makeFail(zct_slms::api::ErrorCode::VALIDATION, "version 和 download_url 为必填")));
+            cb(
+                drogon::HttpResponse::newHttpJsonResponse(
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::VALIDATION, "version 和 download_url 为必填")
+                )
+            );
             return;
         }
 
         auto app = zct_slms::repo::AppRepo::findByAppid(appid_str);
         if (!app) {
-            cb(drogon::HttpResponse::newHttpJsonResponse(
-                zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "APP 不存在")));
+            cb(
+                drogon::HttpResponse::newHttpJsonResponse(
+                    zct_slms::api::makeFail(zct_slms::api::ErrorCode::APP_NOT_FOUND, "APP 不存在")
+                )
+            );
             return;
         }
 
@@ -54,8 +54,11 @@ namespace zct_slms::inside::api::v1::app::version::create_ {
         if (ch_rows.empty()) {
             auto r = zct_slms::service::UpdateService::createChannel(app->id, channel, "");
             if (!r.success) {
-                cb(drogon::HttpResponse::newHttpJsonResponse(
-                    zct_slms::api::makeFail(r.code, r.message)));
+                cb(
+                    drogon::HttpResponse::newHttpJsonResponse(
+                        zct_slms::api::makeFail(r.code, r.message)
+                    )
+                );
                 return;
             }
             channel_id = *r.value;
@@ -64,7 +67,13 @@ namespace zct_slms::inside::api::v1::app::version::create_ {
         }
 
         auto r = zct_slms::service::UpdateService::createVersion(
-            channel_id, version, url, hash, algo, changelog, minv
+            channel_id,
+            version,
+            url,
+            hash,
+            algo,
+            changelog,
+            minv
         );
         if (!r.success) {
             cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(r.code, r.message)));
@@ -72,7 +81,7 @@ namespace zct_slms::inside::api::v1::app::version::create_ {
         }
         Json::Value v;
         v["version_id"] = static_cast<Json::Int64>(*r.value);
-        zct_slms::inside::api::v1::common::reviewContentChanged("APP","USER",app->id);
+        zct_slms::inside::api::v1::common::reviewContentChanged("APP", "USER", app->id);
         v["appid"] = app->appid;
         v["channel"] = channel;
         v["version"] = version;
@@ -80,4 +89,3 @@ namespace zct_slms::inside::api::v1::app::version::create_ {
     }
 }
 
-#endif // ZCT_SLMS_API_V1_APP_VERSION_CREATE

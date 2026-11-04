@@ -1,319 +1,322 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 ZCT Studio
+
 name: Build and Release
 
 on:
-  push:
-    branches:
-      - '**'
-      - '!main'
-      - '!main-*'
-    tags: ['v*']
-  pull_request:
+    push:
+        branches:
+            - '**'
+            - '!main'
+            - '!main-*'
+        tags: [ 'v*' ]
+    pull_request:
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
     version-check:
         name: Validate release version
         runs-on: ubuntu-22.04
         steps:
-            - uses: actions/checkout@v4
-            - name: Compare release tag with VERSION
-              shell: bash
-              run: bash .github/scripts/check-version.sh
-
+            -   uses: actions/checkout@v4
+            -   name: Compare release tag with VERSION
+                shell: bash
+                run: bash .github/scripts/check-version.sh
+    
     windows-x64:
-        needs: [version-check]
+        needs: [ version-check ]
         runs-on: windows-2022
         steps:
-            - uses: actions/checkout@v4
-              with: { submodules: recursive }
-            - uses: lukka/get-cmake@latest
-            - name: vcpkg install
-              shell: pwsh
-              run: |
-                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
-                  ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-windows-static --x-manifest-root="${{ github.workspace }}"
-            - name: Configure
-              shell: pwsh
-              run: cmake -B build -S . -A x64 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Release
-            - name: Build
-              shell: pwsh
-              run: cmake --build build --config Release -j
-            - name: Package
-              shell: pwsh
-              run: |
-                  New-Item -ItemType Directory -Force dist | Out-Null
-                  Copy-Item build/bin/Release/ZCT-SLMS.exe dist/
-                  $ErrorActionPreference = 'Stop'
-                  New-Item -ItemType Directory -Force dist/config | Out-Null
-                  Copy-Item config/config.example.yaml dist/config/config.example.yaml
-                  Copy-Item config/config.example.yaml dist/config/config.yaml
-                  Copy-Item migrations dist/migrations -Recurse
-                  Copy-Item .env.example, README.md, LICENSE, VERSION dist/
-                  if (!(Test-Path dist/migrations/sqlite)) { throw 'Missing SQLite migrations' }
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: ZCT-SLMS-windows-x64
-                  path: dist
-                  include-hidden-files: true
-                  if-no-files-found: error
+            -   uses: actions/checkout@v4
+                with: { submodules: recursive }
+            -   uses: lukka/get-cmake@latest
+            -   name: vcpkg install
+                shell: pwsh
+                run: |
+                    git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
+                    ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+                    ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-windows-static --x-manifest-root="${{ github.workspace }}"
+            -   name: Configure
+                shell: pwsh
+                run: cmake -B build -S . -A x64 -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Release
+            -   name: Build
+                shell: pwsh
+                run: cmake --build build --config Release -j
+            -   name: Package
+                shell: pwsh
+                run: |
+                    New-Item -ItemType Directory -Force dist | Out-Null
+                    Copy-Item build/bin/Release/ZCT-SLMS.exe dist/
+                    $ErrorActionPreference = 'Stop'
+                    New-Item -ItemType Directory -Force dist/config | Out-Null
+                    Copy-Item config/config.example.yaml dist/config/config.example.yaml
+                    Copy-Item config/config.example.yaml dist/config/config.yaml
+                    Copy-Item migrations dist/migrations -Recurse
+                    Copy-Item .env.example, README.md, LICENSE, VERSION dist/
+                    if (!(Test-Path dist/migrations/sqlite)) { throw 'Missing SQLite migrations' }
+            -   uses: actions/upload-artifact@v4
+                with:
+                    name: ZCT-SLMS-windows-x64
+                    path: dist
+                    include-hidden-files: true
+                    if-no-files-found: error
     
     linux-x64:
-        needs: [version-check]
+        needs: [ version-check ]
         runs-on: ubuntu-22.04
         env:
             CC: gcc-13
             CXX: g++-13
             LDFLAGS: -static-libstdc++ -static-libgcc
         steps:
-            - uses: actions/checkout@v4
-              with: { submodules: recursive }
-            - uses: lukka/get-cmake@latest
-            - name: Install C++20 toolchain
-              run: |
-                  sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-                  sudo apt-get update
-                  sudo apt-get install -y gcc-13 g++-13
-                  g++-13 --version
-            - name: vcpkg install
-              run: |
-                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  # bootstrap downloads can fail transiently (for example HTTP 504).
-                  for attempt in 1 2 3 4; do
-                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
-                      break
-                    fi
-                    if [ "$attempt" -eq 4 ]; then
-                      exit 1
-                    fi
-                    sleep "$((attempt * 5))"
-                  done
-                  ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-linux --x-manifest-root="${{ github.workspace }}"
-            - name: Configure
-              run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_BUILD_TYPE=Release
-            - name: Build
-              run: cmake --build build -j
-            - name: Package
-              run: |
-                  mkdir -p dist
-                  cp build/ZCT-SLMS dist/
-                  mkdir -p dist/config
-                  cp config/config.example.yaml dist/config/config.example.yaml
-                  cp config/config.example.yaml dist/config/config.yaml
-                  cp -r migrations dist/migrations
-                  cp .env.example README.md LICENSE VERSION dist/
-                  test -d dist/migrations/sqlite
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: ZCT-SLMS-linux-x64
-                  path: dist
-                  include-hidden-files: true
-                  if-no-files-found: error
+            -   uses: actions/checkout@v4
+                with: { submodules: recursive }
+            -   uses: lukka/get-cmake@latest
+            -   name: Install C++20 toolchain
+                run: |
+                    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+                    sudo apt-get update
+                    sudo apt-get install -y gcc-13 g++-13
+                    g++-13 --version
+            -   name: vcpkg install
+                run: |
+                    git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
+                    # bootstrap downloads can fail transiently (for example HTTP 504).
+                    for attempt in 1 2 3 4; do
+                      if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                        break
+                      fi
+                      if [ "$attempt" -eq 4 ]; then
+                        exit 1
+                      fi
+                      sleep "$((attempt * 5))"
+                    done
+                    ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=x64-linux --x-manifest-root="${{ github.workspace }}"
+            -   name: Configure
+                run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_BUILD_TYPE=Release
+            -   name: Build
+                run: cmake --build build -j
+            -   name: Package
+                run: |
+                    mkdir -p dist
+                    cp build/ZCT-SLMS dist/
+                    mkdir -p dist/config
+                    cp config/config.example.yaml dist/config/config.example.yaml
+                    cp config/config.example.yaml dist/config/config.yaml
+                    cp -r migrations dist/migrations
+                    cp .env.example README.md LICENSE VERSION dist/
+                    test -d dist/migrations/sqlite
+            -   uses: actions/upload-artifact@v4
+                with:
+                    name: ZCT-SLMS-linux-x64
+                    path: dist
+                    include-hidden-files: true
+                    if-no-files-found: error
     
     linux-arm64:
-        needs: [version-check]
+        needs: [ version-check ]
         runs-on: ubuntu-22.04-arm
         env:
             CC: gcc-13
             CXX: g++-13
             LDFLAGS: -static-libstdc++ -static-libgcc
         steps:
-            - uses: actions/checkout@v4
-              with: { submodules: recursive }
-            - uses: lukka/get-cmake@latest
-            - name: Install C++20 toolchain
-              run: |
-                  sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-                  sudo apt-get update
-                  sudo apt-get install -y gcc-13 g++-13
-                  g++-13 --version
-            - name: vcpkg install
-              run: |
-                  git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
-                  # bootstrap downloads can fail transiently (for example HTTP 504).
-                  for attempt in 1 2 3 4; do
-                    if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
-                      break
-                    fi
-                    if [ "$attempt" -eq 4 ]; then
-                      exit 1
-                    fi
-                    sleep "$((attempt * 5))"
-                  done
-                  ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-linux --x-manifest-root="${{ github.workspace }}"
-            - name: Configure
-              run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=arm64-linux -DCMAKE_BUILD_TYPE=Release
-            - name: Build
-              run: cmake --build build -j
-            - name: Package
-              run: |
-                  mkdir -p dist
-                  cp build/ZCT-SLMS dist/
-                  mkdir -p dist/config
-                  cp config/config.example.yaml dist/config/config.example.yaml
-                  cp config/config.example.yaml dist/config/config.yaml
-                  cp -r migrations dist/migrations
-                  cp .env.example README.md LICENSE VERSION dist/
-                  test -d dist/migrations/sqlite
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: ZCT-SLMS-linux-arm64
-                  path: dist
-                  include-hidden-files: true
-                  if-no-files-found: error
+            -   uses: actions/checkout@v4
+                with: { submodules: recursive }
+            -   uses: lukka/get-cmake@latest
+            -   name: Install C++20 toolchain
+                run: |
+                    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+                    sudo apt-get update
+                    sudo apt-get install -y gcc-13 g++-13
+                    g++-13 --version
+            -   name: vcpkg install
+                run: |
+                    git clone --depth 1 --branch 2025.06.13 https://github.com/microsoft/vcpkg.git
+                    # bootstrap downloads can fail transiently (for example HTTP 504).
+                    for attempt in 1 2 3 4; do
+                      if ./vcpkg/bootstrap-vcpkg.sh -disableMetrics; then
+                        break
+                      fi
+                      if [ "$attempt" -eq 4 ]; then
+                        exit 1
+                      fi
+                      sleep "$((attempt * 5))"
+                    done
+                    ./vcpkg/vcpkg install --x-feature=postgres --x-feature=mysql --triplet=arm64-linux --x-manifest-root="${{ github.workspace }}"
+            -   name: Configure
+                run: cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=arm64-linux -DCMAKE_BUILD_TYPE=Release
+            -   name: Build
+                run: cmake --build build -j
+            -   name: Package
+                run: |
+                    mkdir -p dist
+                    cp build/ZCT-SLMS dist/
+                    mkdir -p dist/config
+                    cp config/config.example.yaml dist/config/config.example.yaml
+                    cp config/config.example.yaml dist/config/config.yaml
+                    cp -r migrations dist/migrations
+                    cp .env.example README.md LICENSE VERSION dist/
+                    test -d dist/migrations/sqlite
+            -   uses: actions/upload-artifact@v4
+                with:
+                    name: ZCT-SLMS-linux-arm64
+                    path: dist
+                    include-hidden-files: true
+                    if-no-files-found: error
     
     docker-linux:
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         name: Docker Linux ${{ matrix.arch }}
-        needs: [windows-x64, linux-x64, linux-arm64]
+        needs: [ windows-x64, linux-x64, linux-arm64 ]
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - arch: amd64
-                      runner: ubuntu-22.04
-                    - arch: arm64
-                      runner: ubuntu-22.04-arm
+                    -   arch: amd64
+                        runner: ubuntu-22.04
+                    -   arch: arm64
+                        runner: ubuntu-22.04-arm
         runs-on: ${{ matrix.runner }}
         permissions:
             contents: read
             packages: write
         steps:
-            - uses: actions/checkout@v4
-              with: { submodules: recursive }
-            - uses: docker/setup-buildx-action@v3
-            - name: Platform image metadata
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: ghcr.io/zct-studio/zct-slms
-                  flavor: |
-                      latest=false
-                      suffix=-linux-${{ matrix.arch }}
-                  tags: |
-                      type=ref,event=tag
-                      type=ref,event=pr
-                      type=sha,prefix=sha-
-            - name: Build and load platform image
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  file: Dockerfile
-                  platforms: linux/${{ matrix.arch }}
-                  load: true
-                  push: false
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha,scope=linux-${{ matrix.arch }}
-                  cache-to: type=gha,scope=linux-${{ matrix.arch }},mode=max
-            - name: Smoke test platform image
-              env:
-                  IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
-              shell: bash
-              run: |
-                  image="$(printf '%s\n' "$IMAGE_TAGS" | head -n 1)"
-                  container="$(docker run -d "$image")"
-                  trap 'docker rm -f "$container" >/dev/null' EXIT
-                  for attempt in $(seq 1 30); do
-                    if docker exec "$container" curl --fail --silent http://127.0.0.1:17112/api/v1/ping; then
-                      exit 0
-                    fi
-                    sleep 2
-                  done
-                  echo 'Container did not become ready' >&2
-                  exit 1
-            - name: Log in to GHCR (tags only)
-              if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-              uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-            - name: Push verified platform image (tags only)
-              if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-              env:
-                  IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
-              shell: bash
-              run: |
-                  while IFS= read -r image; do
-                    test -z "$image" || docker push "$image"
-                  done <<< "$IMAGE_TAGS"
-
+            -   uses: actions/checkout@v4
+                with: { submodules: recursive }
+            -   uses: docker/setup-buildx-action@v3
+            -   name: Platform image metadata
+                id: meta
+                uses: docker/metadata-action@v5
+                with:
+                    images: ghcr.io/zct-studio/zct-slms
+                    flavor: |
+                        latest=false
+                        suffix=-linux-${{ matrix.arch }}
+                    tags: |
+                        type=ref,event=tag
+                        type=ref,event=pr
+                        type=sha,prefix=sha-
+            -   name: Build and load platform image
+                uses: docker/build-push-action@v6
+                with:
+                    context: .
+                    file: Dockerfile
+                    platforms: linux/${{ matrix.arch }}
+                    load: true
+                    push: false
+                    tags: ${{ steps.meta.outputs.tags }}
+                    labels: ${{ steps.meta.outputs.labels }}
+                    cache-from: type=gha,scope=linux-${{ matrix.arch }}
+                    cache-to: type=gha,scope=linux-${{ matrix.arch }},mode=max
+            -   name: Smoke test platform image
+                env:
+                    IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+                shell: bash
+                run: |
+                    image="$(printf '%s\n' "$IMAGE_TAGS" | head -n 1)"
+                    container="$(docker run -d "$image")"
+                    trap 'docker rm -f "$container" >/dev/null' EXIT
+                    for attempt in $(seq 1 30); do
+                      if docker exec "$container" curl --fail --silent http://127.0.0.1:17112/api/v1/ping; then
+                        exit 0
+                      fi
+                      sleep 2
+                    done
+                    echo 'Container did not become ready' >&2
+                    exit 1
+            -   name: Log in to GHCR (tags only)
+                if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+                uses: docker/login-action@v3
+                with:
+                    registry: ghcr.io
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
+            -   name: Push verified platform image (tags only)
+                if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+                env:
+                    IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+                shell: bash
+                run: |
+                    while IFS= read -r image; do
+                      test -z "$image" || docker push "$image"
+                    done <<< "$IMAGE_TAGS"
+    
     docker:
         name: Publish multi-platform Docker index
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        needs: [docker-linux]
+        needs: [ docker-linux ]
         runs-on: ubuntu-22.04
         permissions:
             contents: read
             packages: write
         steps:
-            - uses: docker/setup-buildx-action@v3
-            - uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-            - name: Combine verified Linux images
-              env:
-                  VERSION: ${{ github.ref_name }}
-              shell: bash
-              run: |
-                  image=ghcr.io/zct-studio/zct-slms
-                  docker buildx imagetools create --tag "$image:$VERSION" \
-                    "$image:$VERSION-linux-amd64" \
-                    "$image:$VERSION-linux-arm64"
-                  # Any tag containing '-' is a prerelease and must not replace latest.
-                  if [[ "$VERSION" != *-* ]]; then
-                    docker buildx imagetools create --tag "$image:latest" "$image:$VERSION"
-                  fi
-
+            -   uses: docker/setup-buildx-action@v3
+            -   uses: docker/login-action@v3
+                with:
+                    registry: ghcr.io
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
+            -   name: Combine verified Linux images
+                env:
+                    VERSION: ${{ github.ref_name }}
+                shell: bash
+                run: |
+                    image=ghcr.io/zct-studio/zct-slms
+                    docker buildx imagetools create --tag "$image:$VERSION" \
+                      "$image:$VERSION-linux-amd64" \
+                      "$image:$VERSION-linux-arm64"
+                    # Any tag containing '-' is a prerelease and must not replace latest.
+                    if [[ "$VERSION" != *-* ]]; then
+                      docker buildx imagetools create --tag "$image:latest" "$image:$VERSION"
+                    fi
+    
     release:
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        needs: [windows-x64, linux-x64, linux-arm64, docker]
+        needs: [ windows-x64, linux-x64, linux-arm64, docker ]
         runs-on: ubuntu-22.04
         permissions:
             contents: write
         steps:
-            - uses: actions/download-artifact@v4
-              with:
-                  pattern: ZCT-SLMS-*
-                  path: artifacts
-            - name: Archive each platform separately
-              shell: bash
-              run: |
-                  mkdir -p release
-                  count=0
-                  for platform in ZCT-SLMS-windows-x64 ZCT-SLMS-linux-x64 ZCT-SLMS-linux-arm64; do
-                    directory="artifacts/$platform"
-                    test -d "$directory"
-                    for required in .env.example README.md LICENSE VERSION config/config.yaml config/config.example.yaml migrations/001_initial.sql; do
-                      test -s "$directory/$required"
+            -   uses: actions/download-artifact@v4
+                with:
+                    pattern: ZCT-SLMS-*
+                    path: artifacts
+            -   name: Archive each platform separately
+                shell: bash
+                run: |
+                    mkdir -p release
+                    count=0
+                    for platform in ZCT-SLMS-windows-x64 ZCT-SLMS-linux-x64 ZCT-SLMS-linux-arm64; do
+                      directory="artifacts/$platform"
+                      test -d "$directory"
+                      for required in .env.example README.md LICENSE VERSION config/config.yaml config/config.example.yaml migrations/001_initial.sql; do
+                        test -s "$directory/$required"
+                      done
+                      package_dir="$(mktemp -d "$RUNNER_TEMP/zct-slms-package.XXXXXX")"
+                      mkdir -p "$package_dir/ZCT-SLMS"
+                      cp -a "$directory/." "$package_dir/ZCT-SLMS/"
+                      case "$platform" in
+                        *-windows-*)
+                          (cd "$package_dir" && zip -qr "$GITHUB_WORKSPACE/release/$platform.zip" ZCT-SLMS)
+                          ;;
+                        *)
+                          chmod +x "$package_dir/ZCT-SLMS/ZCT-SLMS"
+                          tar -czf "release/$platform.tar.gz" -C "$package_dir" ZCT-SLMS
+                          ;;
+                      esac
+                      count=$((count + 1))
                     done
-                    package_dir="$(mktemp -d "$RUNNER_TEMP/zct-slms-package.XXXXXX")"
-                    mkdir -p "$package_dir/ZCT-SLMS"
-                    cp -a "$directory/." "$package_dir/ZCT-SLMS/"
-                    case "$platform" in
-                      *-windows-*)
-                        (cd "$package_dir" && zip -qr "$GITHUB_WORKSPACE/release/$platform.zip" ZCT-SLMS)
-                        ;;
-                      *)
-                        chmod +x "$package_dir/ZCT-SLMS/ZCT-SLMS"
-                        tar -czf "release/$platform.tar.gz" -C "$package_dir" ZCT-SLMS
-                        ;;
-                    esac
-                    count=$((count + 1))
-                  done
-                  test "$count" -eq 3
-            - name: Create Release
-              uses: softprops/action-gh-release@v2
-              with:
-                  tag_name: ${{ github.ref_name }}
-                  name: ZCT-SLMS ${{ github.ref_name }}
-                  files: |
-                      release/*.zip
-                      release/*.tar.gz
-                  fail_on_unmatched_files: true
-                  prerelease: ${{ contains(github.ref_name, '-') }}
+                    test "$count" -eq 3
+            -   name: Create Release
+                uses: softprops/action-gh-release@v2
+                with:
+                    tag_name: ${{ github.ref_name }}
+                    name: ZCT-SLMS ${{ github.ref_name }}
+                    files: |
+                        release/*.zip
+                        release/*.tar.gz
+                    fail_on_unmatched_files: true
+                    prerelease: ${{ contains(github.ref_name, '-') }}

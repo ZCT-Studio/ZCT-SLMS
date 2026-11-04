@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/10/3.
-//
-
-#ifndef ZCT_SLMS_DATABASE_MYSQL_DATABASE
-#define ZCT_SLMS_DATABASE_MYSQL_DATABASE
+#pragma once
 
 #include "database/idatabase.hpp"
 #include <mysql.h>
@@ -15,7 +9,6 @@
 #include <vector>
 
 namespace zct_slms::db {
-
     class MysqlDatabase : public IDatabase {
     public:
         const char* backendName() const override { return "mysql"; }
@@ -160,7 +153,10 @@ namespace zct_slms::db {
         uint64_t lastRows_ = 0;
 
         void closeLocked() {
-            if (mysql_) { mysql_close(mysql_); mysql_ = nullptr; }
+            if (mysql_) {
+                mysql_close(mysql_);
+                mysql_ = nullptr;
+            }
             open_ = false;
         }
 
@@ -268,4 +264,3 @@ namespace zct_slms::db {
     };
 }
 
-#endif // ZCT_SLMS_DATABASE_MYSQL_DATABASE

@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_API_V1_SYSTEM_PING
-#define ZCT_SLMS_API_V1_SYSTEM_PING
+#pragma once
 
 #include <exception>
 #include <functional>
@@ -37,11 +31,13 @@ namespace zct_slms::inside::api::v1::system::ping {
         v["pong"] = true;
         v["project"] = zct_slms::constants::PROJECT_NAME;
         v["version"] = zct_slms::constants::PROJECT_VERSION;
-        auto auth=zct_slms::service::AuthService::authenticateSession(zct_slms::inside::api::v1::common::authBearer(req));
-        if(auth.success&&auth.user_type=="ADMIN"){v["components"]["ZCLibLog"]=ZCLibLog::Constants::VersionName;v["components"]["ZACLib"]=ZACLIB::Constants::VersionName;}
+        auto auth = zct_slms::service::AuthService::authenticateSession(zct_slms::inside::api::v1::common::authBearer(req));
+        if (auth.success && auth.user_type == "ADMIN") {
+            v["components"]["ZCLibLog"] = ZCLibLog::Constants::VersionName;
+            v["components"]["ZACLib"] = ZACLIB::Constants::VersionName;
+        }
         v["server_time"] = static_cast<Json::Int64>(std::time(nullptr));
         cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(v)));
     }
 }
 
-#endif // ZCT_SLMS_API_V1_SYSTEM_PING

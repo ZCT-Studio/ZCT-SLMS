@@ -5,11 +5,15 @@
     "features": {
         "postgres": {
             "description": "PostgreSQL backend support via libpq",
-            "dependencies": ["libpq"]
+            "dependencies": [
+                "libpq"
+            ]
         },
         "mysql": {
             "description": "MySQL / MariaDB backend support via libmariadb (MariaDB Connector/C, API compatible with libmysqlclient)",
-            "dependencies": ["libmariadb"]
+            "dependencies": [
+                "libmariadb"
+            ]
         }
     },
     "default-features": [],
@@ -19,7 +23,14 @@
         "yaml-cpp",
         "openssl",
         "argon2",
-        { "name": "curl", "default-features": false, "features": ["ssl", "non-http"] }
+        {
+            "name": "curl",
+            "default-features": false,
+            "features": [
+                "ssl",
+                "non-http"
+            ]
+        }
     ]
 }
 

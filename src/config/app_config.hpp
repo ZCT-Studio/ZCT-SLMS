@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_CONFIG_APP_CONFIG
-#define ZCT_SLMS_CONFIG_APP_CONFIG
+#pragma once
 
 #include <exception>
 #include <filesystem>
@@ -90,7 +84,7 @@ namespace zct_slms {
         }
 
         bool load(const std::string& path) {
-            config_path_=std::filesystem::absolute(path).string();
+            config_path_ = std::filesystem::absolute(path).string();
             try {
                 YAML::Node root = YAML::LoadFile(path);
 
@@ -116,8 +110,10 @@ namespace zct_slms {
 
                     // 校验: ipv4_host 和 ipv6_host 至少一个非空
                     if (server_.ipv4_host.empty() && server_.ipv6_host.empty()) {
-                        throw std::runtime_error("server.ipv4_host and server.ipv6_host cannot both be empty; "
-                                                 "at least one listen address is required");
+                        throw std::runtime_error(
+                            "server.ipv4_host and server.ipv6_host cannot both be empty; "
+                            "at least one listen address is required"
+                        );
                     }
                 }
 
@@ -127,26 +123,26 @@ namespace zct_slms {
                         db_.sqlite_path = n["sqlite_path"].as<std::string>();
 
                     if (auto pg = n["postgresql"]) {
-                        db_.pgsql.host         = pg["host"].as<std::string>(db_.pgsql.host);
-                        db_.pgsql.port         = pg["port"].as<int>(db_.pgsql.port);
-                        db_.pgsql.dbname       = pg["dbname"].as<std::string>(db_.pgsql.dbname);
-                        db_.pgsql.user         = pg["user"].as<std::string>(db_.pgsql.user);
-                        db_.pgsql.password     = pg["password"].as<std::string>(db_.pgsql.password);
-                        db_.pgsql.sslmode      = pg["sslmode"].as<std::string>(db_.pgsql.sslmode);
+                        db_.pgsql.host = pg["host"].as<std::string>(db_.pgsql.host);
+                        db_.pgsql.port = pg["port"].as<int>(db_.pgsql.port);
+                        db_.pgsql.dbname = pg["dbname"].as<std::string>(db_.pgsql.dbname);
+                        db_.pgsql.user = pg["user"].as<std::string>(db_.pgsql.user);
+                        db_.pgsql.password = pg["password"].as<std::string>(db_.pgsql.password);
+                        db_.pgsql.sslmode = pg["sslmode"].as<std::string>(db_.pgsql.sslmode);
                     }
 
                     if (auto my = n["mysql"]) {
-                        db_.mysql.host              = my["host"].as<std::string>(db_.mysql.host);
-                        db_.mysql.port              = my["port"].as<int>(db_.mysql.port);
-                        db_.mysql.dbname            = my["dbname"].as<std::string>(db_.mysql.dbname);
-                        db_.mysql.user              = my["user"].as<std::string>(db_.mysql.user);
-                        db_.mysql.password          = my["password"].as<std::string>(db_.mysql.password);
+                        db_.mysql.host = my["host"].as<std::string>(db_.mysql.host);
+                        db_.mysql.port = my["port"].as<int>(db_.mysql.port);
+                        db_.mysql.dbname = my["dbname"].as<std::string>(db_.mysql.dbname);
+                        db_.mysql.user = my["user"].as<std::string>(db_.mysql.user);
+                        db_.mysql.password = my["password"].as<std::string>(db_.mysql.password);
                         db_.mysql.connect_timeout_sec = my["connect_timeout_sec"].as<int>(db_.mysql.connect_timeout_sec);
                     }
                 }
 
                 if (auto n = root["security"]) {
-                    sec_.app_secret_reveal_allowed=n["app_secret_reveal_allowed"].as<bool>(true);
+                    sec_.app_secret_reveal_allowed = n["app_secret_reveal_allowed"].as<bool>(true);
                     sec_.admin_security_level = n["admin_security_level"].as<std::string>(sec_.admin_security_level);
                     sec_.replay_window_seconds = n["replay_window_seconds"].as<int>(sec_.replay_window_seconds);
                     sec_.session_ttl_seconds = n["session_ttl_seconds"].as<int>(sec_.session_ttl_seconds);
@@ -202,4 +198,3 @@ namespace zct_slms {
     };
 }
 
-#endif // ZCT_SLMS_CONFIG_APP_CONFIG

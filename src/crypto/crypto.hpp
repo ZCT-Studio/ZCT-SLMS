@@ -1,12 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
-
-//
-// Created by wanjiangzhi on 2026/9/25.
-//
-
-#ifndef ZCT_SLMS_CRYPTO_CRYPTO
-#define ZCT_SLMS_CRYPTO_CRYPTO
+#pragma once
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -134,7 +128,9 @@ namespace zct_slms::crypto {
 
     inline std::string randomBytes(const size_t n) {
         std::string buf(n, '\0');
-        if (n > static_cast<size_t>(std::numeric_limits<int>::max()) || (n && RAND_bytes(reinterpret_cast<unsigned char*>(buf.data()), static_cast<int>(n)) != 1)) throw std::runtime_error("secure random generation failed");
+        if (n > static_cast<size_t>(std::numeric_limits<int>::max()) || (n && RAND_bytes(reinterpret_cast<unsigned char*>(buf.data()), static_cast<int>(n)) != 1))
+            throw
+                std::runtime_error("secure random generation failed");
         return buf;
     }
 
@@ -149,7 +145,10 @@ namespace zct_slms::crypto {
         std::string out;
         out.reserve(len);
         std::vector<unsigned char> rnd(len);
-        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1)) throw std::runtime_error("secure random generation failed");
+        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1))
+            throw std::runtime_error(
+                "secure random generation failed"
+            );
         for (size_t i = 0; i < len; ++i)
             out.push_back(CHARS[rnd[i] % N]);
         return out;
@@ -162,7 +161,10 @@ namespace zct_slms::crypto {
         std::string out;
         out.reserve(len);
         std::vector<unsigned char> rnd(len);
-        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1)) throw std::runtime_error("secure random generation failed");
+        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1))
+            throw std::runtime_error(
+                "secure random generation failed"
+            );
         for (size_t i = 0; i < len; ++i)
             out.push_back(CHARS[rnd[i] % N]);
         return out;
@@ -174,7 +176,10 @@ namespace zct_slms::crypto {
         std::string out;
         out.reserve(len);
         std::vector<unsigned char> rnd(len);
-        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1)) throw std::runtime_error("secure random generation failed");
+        if (len > static_cast<size_t>(std::numeric_limits<int>::max()) || (len && RAND_bytes(rnd.data(), static_cast<int>(len)) != 1))
+            throw std::runtime_error(
+                "secure random generation failed"
+            );
         for (size_t i = 0; i < len; ++i)
             out.push_back(DIGITS[rnd[i] % N]);
         return out;
@@ -222,6 +227,7 @@ namespace zct_slms::crypto {
         const std::string combined = std::string(salt) + std::string(password) + std::string(salt);
         return toHex(sha512(combined));
     }
+
     inline bool argon2idVerify(
         const std::string_view password,
         const std::string_view salt,
@@ -338,6 +344,7 @@ namespace zct_slms::crypto {
         plain.resize(total);
         return plain;
     }
+
     inline std::string aes128GcmEncrypt(std::string_view p, std::string_view k) { return aeadEncrypt(p, k, EVP_aes_128_gcm()); }
     inline std::optional<std::string> aes128GcmDecrypt(std::string_view p, std::string_view k) { return aeadDecrypt(p, k, EVP_aes_128_gcm()); }
     inline std::string aes256GcmEncrypt(std::string_view p, std::string_view k) { return aeadEncrypt(p, k, EVP_aes_256_gcm()); }
@@ -345,7 +352,5 @@ namespace zct_slms::crypto {
     inline std::string chacha20Poly1305Encrypt(std::string_view p, std::string_view k) { return aeadEncrypt(p, k, EVP_chacha20_poly1305()); }
     inline std::optional<std::string> chacha20Poly1305Decrypt(std::string_view p, std::string_view k) { return aeadDecrypt(p, k, EVP_chacha20_poly1305()); }
     inline bool constantTimeEqual(std::string_view a, std::string_view b) { return a.size() == b.size() && CRYPTO_memcmp(a.data(), b.data(), a.size()) == 0; }
-
 }
 
-#endif // ZCT_SLMS_CRYPTO_CRYPTO
