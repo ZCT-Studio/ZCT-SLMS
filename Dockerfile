@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bison flex \
 WORKDIR /src
 ARG ZCT_SLMS_BUILD_DATABASE_FEATURES=postgres;mysql
 ARG ZCT_SLMS_BUILD_JOBS=2
-COPY vcpkg.json CMakeLists.txt ./
+COPY vcpkg.json CMakeLists.txt VERSION ./
 COPY cmake/ cmake/
 COPY src/ src/
 COPY libs/ libs/

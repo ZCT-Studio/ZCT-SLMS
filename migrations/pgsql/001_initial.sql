@@ -1,5 +1,5 @@
--- ZCT-SLMS - Initial Schema
--- Version 2.0.0
+-- ZCT-SLMS 初始数据库结构
+-- 此文件定义首次安装使用的基础表结构
 
 CREATE TABLE IF NOT EXISTS admins
 (

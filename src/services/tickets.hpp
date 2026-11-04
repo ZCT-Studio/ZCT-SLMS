@@ -174,7 +174,7 @@ template <class Row> inline Json summary(const Row &row) {
 }
 
 inline Json securitySnapshot(const std::string &role,int64_t uid,const std::string &method,const std::string &keyId="") {
-  static const std::set<std::string> methods={"email","phone","microsoft","github","totp","passkey","recovery"};
+  static const std::set<std::string> methods={"email","phone","microsoft","github","google","telegram","gitlab","discord","totp","passkey","recovery"};
   if(!methods.contains(method)) throw std::runtime_error("安全方式无效");
   auto factors=zct_slms::factors::load(zct_slms::factors::accountKey(role,uid));
   Json out;out["method"]=method;out["key_id"]=keyId;out["factor_version"]=factors.get("version",0);
@@ -199,7 +199,7 @@ inline Json securitySnapshot(const std::string &role,int64_t uid,const std::stri
 inline void securityTargets(const Req &req,Callback &&cb) {
   try {
     auto a=zct_slms::factors::auth(req);std::lock_guard lock(zct_slms::factors::guard);Json out(::Json::arrayValue);
-    for(const auto &method:{"email","phone","microsoft","github","totp","passkey","recovery"}) {
+    for(const auto &method:{"email","phone","microsoft","github","google","telegram","gitlab","discord","totp","passkey","recovery"}) {
       try {auto item=securitySnapshot(a.user_type,a.user_id,method);Json entry;entry["method"]=method;entry["key_id"]="";entry["name"]=item.get("name","");out.append(entry);}catch(const std::exception&){}
     }
     ok(cb,out);

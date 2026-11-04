@@ -2,8 +2,23 @@ cmake_minimum_required(VERSION 3.25)
 
 include(cmake/vcpkg_triplet.cmake)
 
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/VERSION")
+file(READ "${CMAKE_SOURCE_DIR}/VERSION" ZCT_SLMS_VERSION)
+string(STRIP "${ZCT_SLMS_VERSION}" ZCT_SLMS_VERSION)
+if(NOT ZCT_SLMS_VERSION MATCHES "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$")
+    message(FATAL_ERROR "VERSION must be a valid semantic version")
+endif()
+set(ZCT_SLMS_NUMERIC_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
+if(ZCT_SLMS_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+-([^+]+)")
+    string(REPLACE "." ";" _prerelease_identifiers "${CMAKE_MATCH_1}")
+    foreach(_identifier IN LISTS _prerelease_identifiers)
+        if(_identifier MATCHES "^0[0-9]+$")
+            message(FATAL_ERROR "Numeric prerelease identifiers cannot have leading zeroes")
+        endif()
+    endforeach()
+endif()
 project(ZCT-SLMS
-    VERSION 2.0.0
+    VERSION ${ZCT_SLMS_NUMERIC_VERSION}
     LANGUAGES CXX
 )
 
@@ -15,7 +30,9 @@ set(ZCT_SLMS_INCLUDE_DIRS
 include(cmake/compiler_flags.cmake)
 include(cmake/dependencies.cmake)
 
+configure_file(cmake/version.hpp.in "${CMAKE_BINARY_DIR}/generated/zct_slms_version.hpp" @ONLY)
 add_executable(ZCT-SLMS src/main.cpp)
+target_include_directories(ZCT-SLMS PRIVATE "${CMAKE_BINARY_DIR}/generated")
 add_library(zct_slms_zaclib STATIC libs/ZACLib/ZACLib.cpp)
 target_include_directories(zct_slms_zaclib PUBLIC "${CMAKE_SOURCE_DIR}/libs")
 set_target_properties(zct_slms_zaclib PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED YES)

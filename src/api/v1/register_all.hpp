@@ -108,11 +108,11 @@ inline void registerAllV1Routes(drogon::HttpAppFramework &app) {
   app.registerHandler("/api/v1/tickets/notifications/code",wrap(&zct_slms::ticket_mail::sendCode),{Post});
   app.registerHandler("/api/v1/tickets/notifications/verify",wrap(&zct_slms::ticket_mail::verifyCode),{Post});
   app.registerHandler("/api/v1/auth/authorize/start",wrap(&zct_slms::authorization::start),{Post});
-  app.registerHandler("/api/v1/auth/recovery/options",wrap(zct_slms::human::secured(&zct_slms::recovery::options)),{Post});
+  app.registerHandler("/api/v1/auth/recovery/options",wrap(&zct_slms::recovery::options),{Post});
   app.registerHandler("/api/v1/auth/recovery/code",wrap(zct_slms::human::secured(&zct_slms::recovery::sendCode)),{Post});
   app.registerHandler("/api/v1/auth/recovery/verify",wrap(&zct_slms::recovery::verifyCode),{Post});
   app.registerHandler("/api/v1/auth/recovery/totp",wrap(zct_slms::human::secured(&zct_slms::recovery::verifyTotp)),{Post});
-  app.registerHandler("/api/v1/auth/recovery/passkey/start",wrap(zct_slms::human::secured(&zct_slms::recovery::passkeyStart)),{Post});
+  app.registerHandler("/api/v1/auth/recovery/passkey/start",wrap(&zct_slms::recovery::passkeyStart),{Post});
   app.registerHandler("/api/v1/auth/recovery/passkey/finish",wrap(&zct_slms::recovery::passkeyFinish),{Post});
   app.registerHandler("/api/v1/auth/recovery/reset",wrap(&zct_slms::recovery::reset),{Post});
   app.registerHandler("/api/v1/tickets/create",wrap(&zct_slms::tickets::create),{Post});
@@ -161,7 +161,7 @@ inline void registerAllV1Routes(drogon::HttpAppFramework &app) {
                       wrap(&zct_slms::portal_auth::status), {Get});
   app.registerHandler(
       "/api/v1/auth/factors/passkey/start",
-      wrap(zct_slms::human::secured(&zct_slms::portal_auth::primaryStart)), {Post});
+      wrap(&zct_slms::portal_auth::primaryStart), {Post});
   app.registerHandler(
       "/api/v1/auth/factors/primary",
       wrap([](const drogon::HttpRequestPtr &req, zct_slms::identity::Callback &&cb) {
@@ -228,8 +228,12 @@ inline void registerAllV1Routes(drogon::HttpAppFramework &app) {
   app.registerHandler("/api/v1/auth/connect/bindings",
                       wrap(&zct_slms::identity::bindings), {Get});
   app.registerHandler("/api/v1/auth/connect/start",
-                      wrap(zct_slms::human::secured(&zct_slms::identity::oauthStart)),
+                      wrap(&zct_slms::identity::oauthStart),
                       {Post});
+  app.registerHandler("/api/v1/auth/connect/callback/gitlab", wrap(&zct_slms::identity::oauthCallback), {Get});
+  app.registerHandler("/api/v1/auth/connect/callback/discord", wrap(&zct_slms::identity::oauthCallback), {Get});
+  app.registerHandler("/api/v1/auth/connect/callback/google", wrap(&zct_slms::identity::oauthCallback), {Get});
+  app.registerHandler("/api/v1/auth/connect/callback/telegram", wrap(&zct_slms::identity::oauthCallback), {Get});
   app.registerHandler("/api/v1/auth/connect/callback/github",
                       wrap(&zct_slms::identity::oauthCallback), {Get});
   app.registerHandler("/api/v1/auth/connect/callback/microsoft",

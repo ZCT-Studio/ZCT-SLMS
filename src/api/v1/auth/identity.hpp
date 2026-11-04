@@ -1,5 +1,7 @@
 #pragma once
 #include "services/identity_service.hpp"
+#include "services/telegram_oidc.hpp"
+#include "services/oauth_profile.hpp"
 namespace zct_slms::identity {
 inline bool adminPassword(const Req &req) {
   auto a =
@@ -48,7 +50,7 @@ inline void options(const Req &, Callback &&cb) {
     out["registration_enabled"] = c.get("registration_enabled", true);
     out["invite_registration_enabled"] =
         c.get("invite_registration_enabled", true);
-    for (auto m : {"phone", "email", "microsoft", "github"})
+    for (auto m : {"phone", "email", "microsoft", "github", "google", "telegram", "gitlab", "discord"})
       out[std::string(m) + "_enabled"] = ready(c, m);
     ok(cb, out);
   } catch (...) {
@@ -84,7 +86,7 @@ inline void settings(const Req &req, Callback &&callback) {
             "aliyun_sign",     "aliyun_template", "aliyun_reset_template", "twilio_sid",
             "twilio_token",    "twilio_from",      "github_client",
             "github_secret",   "microsoft_client", "microsoft_secret",
-            "microsoft_tenant"};
+            "microsoft_tenant", "google_client", "google_secret", "telegram_client", "telegram_secret", "gitlab_client", "gitlab_secret", "discord_client", "discord_secret"};
         for (auto &key : keys) {
           if (!body->isMember(key))
             continue;
@@ -98,7 +100,7 @@ inline void settings(const Req &req, Callback &&callback) {
         }
         for (auto k : {"registration_enabled", "invite_registration_enabled",
                        "phone_enabled", "email_enabled", "github_enabled",
-                       "microsoft_enabled"})
+                       "microsoft_enabled", "google_enabled", "telegram_enabled", "gitlab_enabled", "discord_enabled"})
           if (body->isMember(k)) {
             if (!(*body)[k].isBool())
               throw std::runtime_error("开关格式无效");
@@ -120,7 +122,7 @@ inline void settings(const Req &req, Callback &&callback) {
           baseUrl(c);
         if (!val(c, "backend_url").empty()) backendBaseUrl(c);
         tenant(c);
-        for (auto method : {"phone", "email", "github", "microsoft"})
+        for (auto method : {"phone", "email", "github", "microsoft", "google", "telegram", "gitlab", "discord"})
           if (enabled(c, method) && !ready(c, method))
             throw std::runtime_error("启用前请先填写完整的服务配置");
         smtpAuthMechanism(c);
@@ -285,7 +287,7 @@ inline void oauthStart(const Req &req, Callback &&cb) {
   try {
     auto c = config();
     auto provider = common::paramStr(req, "provider");
-    if ((provider != "github" && provider != "microsoft") ||
+    if ((provider != "github" && provider != "microsoft" && provider != "google" && provider != "telegram" && provider != "gitlab" && provider != "discord") ||
         !ready(c, provider))
       throw std::runtime_error("此账号登录方式尚未配置");
     auto intent = common::paramStr(req, "action", "login");
@@ -319,12 +321,15 @@ inline void oauthStart(const Req &req, Callback &&cb) {
         {"response_type", "code"},
         {"code_challenge", b64url(zct_slms::crypto::sha256(verifier))},
         {"code_challenge_method", "S256"},
-        {"scope", provider == "github" ? "read:user" : "openid profile"}};
-    const auto url =
-        (provider == "github" ? "https://github.com/login/oauth/authorize"
-                              : "https://login.microsoftonline.com/" +
-                                    tenant(c) + "/oauth2/v2.0/authorize") +
-        "?" + form(params);
+        {"scope", provider == "github" ? "read:user" : provider == "discord" ? "identify" : provider == "microsoft" ? "openid profile User.Read" : "openid profile"}};
+    if (provider == "telegram") params["nonce"] = b64url(zct_slms::crypto::sha256(verifier));
+    const auto endpoint = provider == "github" ? "https://github.com/login/oauth/authorize" :
+        provider == "google" ? "https://accounts.google.com/o/oauth2/v2/auth" :
+        provider == "telegram" ? "https://oauth.telegram.org/auth" :
+        provider == "gitlab" ? "https://gitlab.com/oauth/authorize" :
+        provider == "discord" ? "https://discord.com/oauth2/authorize" :
+        "https://login.microsoftonline.com/" + tenant(c) + "/oauth2/v2.0/authorize";
+    const auto url = endpoint + "?" + form(params);
     Json out;
     out["url"] = url;
     auto resp =
@@ -361,8 +366,11 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
         throw std::runtime_error("登录配置已变更，请重试");
       const auto tokenUrl = provider == "github"
                                 ? "https://github.com/login/oauth/access_token"
-                                : "https://login.microsoftonline.com/" +
-                                      tenant(c) + "/oauth2/v2.0/token";
+                                : provider == "google" ? "https://oauth2.googleapis.com/token"
+                                : provider == "telegram" ? "https://oauth.telegram.org/token"
+                                : provider == "gitlab" ? "https://gitlab.com/oauth/token"
+                                : provider == "discord" ? "https://discord.com/api/oauth2/token"
+                                : "https://login.microsoftonline.com/" + tenant(c) + "/oauth2/v2.0/token";
       std::map<std::string, std::string> fields = {
           {"client_id", c[provider + "_client"].asString()},
           {"client_secret", c[provider + "_secret"].asString()},
@@ -370,22 +378,36 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
           {"code_verifier", flow.verifier},
           {"grant_type", "authorization_code"},
           {"redirect_uri", callback(backendBaseUrl(c), provider)}};
-      auto token = http(tokenUrl, form(fields),
-                        {"Accept: application/json",
-                         "Content-Type: application/x-www-form-urlencoded"});
-      auto access = token.get("access_token", "").asString();
-      if (access.empty() || access.find_first_of("\r\n") != std::string::npos)
-        throw std::runtime_error("第三方授权失败");
-      auto profile = http(
-          provider == "github" ? "https://api.github.com/user"
-                               : "https://graph.microsoft.com/oidc/userinfo",
-          "", {"Authorization: Bearer " + access, "Accept: application/json"});
-      std::string subject = provider == "github"
+      std::vector<std::string> headers{"Accept: application/json", "Content-Type: application/x-www-form-urlencoded"};
+      if (provider == "telegram") {
+        fields.erase("client_secret");
+        headers.push_back("Authorization: Basic " + zct_slms::crypto::base64Encode(escape(c[provider + "_client"].asString()) + ":" + escape(c[provider + "_secret"].asString())));
+      }
+      auto token = http(tokenUrl, form(fields), headers);
+      Json profile;
+      if (provider == "telegram") {
+        profile = telegramClaims(token.get("id_token", "").asString(), http("https://oauth.telegram.org/.well-known/jwks.json"), c["telegram_client"].asString(), b64url(zct_slms::crypto::sha256(flow.verifier)));
+      } else {
+        auto access = token.get("access_token", "").asString();
+        if (access.empty() || access.find_first_of("\r\n") != std::string::npos) throw std::runtime_error("第三方授权失败");
+        profile = http(provider == "github" ? "https://api.github.com/user" : provider == "google" ? "https://openidconnect.googleapis.com/v1/userinfo" : provider == "gitlab" ? "https://gitlab.com/oauth/userinfo" : provider == "discord" ? "https://discord.com/api/v10/users/@me" : "https://graph.microsoft.com/oidc/userinfo", "", {"Authorization: Bearer " + access, "Accept: application/json"});
+      }
+      std::string subject = (provider == "github" || provider == "discord")
                                 ? profile["id"].asString()
                                 : profile.get("sub", "").asString();
       if (subject.empty())
         throw std::runtime_error("第三方身份无效");
       auto uid = identityUser(provider, subject);
+      if (provider == "microsoft" && flow.mfa_id.empty() && !flow.user && (!uid || !zct_slms::repo::ConfigRepo::getBool("identity_profile_done:" + std::to_string(uid), false)))
+      {
+        const auto access = token.get("access_token", "").asString();
+        try {
+          auto details = http("https://graph.microsoft.com/v1.0/me?$select=displayName,mailNickname,userPrincipalName", "", {"Authorization: Bearer " + access});
+          profile["preferred_username"] = profileText(details, {"mailNickname", "userPrincipalName"});
+          if (profileText(profile, {"name"}).empty()) profile["name"] = profileText(details, {"displayName"});
+        } catch (const std::exception&) { /* Optional profile fields must not prevent login. */ }
+        profile["_avatar"] = microsoftAvatar(access);
+      }
       Json result;
       if (!flow.mfa_id.empty()) {
         if (!uid || uid != flow.user)
@@ -402,11 +424,14 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
           if (!c.get("registration_enabled", true).asBool())
             throw std::runtime_error("此身份尚未注册，平台当前未开放注册");
           const auto username = provider + "_" + zct_slms::crypto::randomHex(8);
-          auto hp = zct_slms::service::hashPassword(zct_slms::crypto::randomHex(32));
+          zct_slms::service::HashedPassword hp{};
+          auto nickname = profile.get("name", "").asString();
+          if (nickname.empty()) nickname = profile.get("login", username).asString();
+          if (nickname.empty()) nickname = username;
           auto success = zct_slms::db::Database::instance().transaction([&] {
             uid = zct_slms::repo::UserRepo::insert(
                 username, hp.hash, hp.salt,
-                profile.get("name", username).asString().substr(0, 96), now(),
+                nickname.substr(0, 96), now(),
                 0);
             zct_slms::repo::ConfigRepo::set(
                 "identity_password_pending:" + std::to_string(uid), "1", now());
@@ -416,8 +441,12 @@ inline void oauthCallback(const Req &req, Callback &&callbackFn) {
           if (!success)
             throw std::runtime_error("注册失败，请重新登录");
         }
-        result = session(uid, common::clientIp(req), common::clientUa(req),
-                         provider);
+        if (!zct_slms::repo::ConfigRepo::getBool("identity_profile_done:" + std::to_string(uid), false) && zct_slms::repo::ConfigRepo::getBool("identity_password_pending:" + std::to_string(uid), false)) {
+          const auto suggested = oauthProfile(provider, profile);
+          for (auto field : {"username", "nickname", "avatar"})
+            zct_slms::repo::ConfigRepo::set("identity_profile_" + std::string(field) + ":" + std::to_string(uid), suggested[field].asString(), now());
+        }
+        result = session(uid, common::clientIp(req), common::clientUa(req), provider);
       }
       const auto ticket = zct_slms::crypto::randomHex(32);
       {

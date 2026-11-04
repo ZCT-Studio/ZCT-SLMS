@@ -1,5 +1,6 @@
 #pragma once
 #include "services/vouchers.hpp"
+#include "services/oauth_profile.hpp"
 namespace zct_slms::portal {
 using namespace zct_slms::identity;
 namespace common = zct_slms::inside::api::v1::common;
@@ -20,7 +21,8 @@ inline bool forceRequired(const std::string &role, int64_t id) {
               "admin_initial_setup_done:" + std::to_string(id), true)) ||
          (role == "USER" &&
           zct_slms::repo::ConfigRepo::getBool(
-              "identity_password_pending:" + std::to_string(id), false));
+              "identity_password_pending:" + std::to_string(id), false) &&
+          !zct_slms::repo::ConfigRepo::getBool("identity_profile_done:" + std::to_string(id), false));
 }
 inline void onboarding(const Req &req, Callback &&callback) {
   background(req, std::move(callback), [](auto req, const Callback &cb) {
@@ -33,6 +35,56 @@ inline void onboarding(const Req &req, Callback &&callback) {
       Json out;
       out["required"] = forceRequired(a.user_type, a.user_id);
       out["initial_admin"] = initial;
+      const auto profile_key = "identity_profile_done:" + std::to_string(a.user_id);
+      const bool profile_setup = a.user_type == "USER" &&
+          zct_slms::repo::ConfigRepo::getBool("identity_password_pending:" + std::to_string(a.user_id), false) &&
+          !zct_slms::repo::ConfigRepo::getBool(profile_key, false);
+      out["profile_setup"] = profile_setup;
+      if (profile_setup && !zct_slms::repo::ConfigRepo::getBool("force_password:USER:" + std::to_string(a.user_id), false)) {
+        auto user = zct_slms::repo::UserRepo::findById(a.user_id);
+        if (!user) throw std::runtime_error("账号不存在");
+        out["username"] = zct_slms::repo::ConfigRepo::get("identity_profile_username:" + std::to_string(a.user_id), "");
+        out["nickname"] = zct_slms::repo::ConfigRepo::get("identity_profile_nickname:" + std::to_string(a.user_id), user->display_name);
+        const auto suggested_avatar = zct_slms::repo::ConfigRepo::get("identity_profile_avatar:" + std::to_string(a.user_id), "");
+        out["avatar"] = suggested_avatar;
+        out["max_avatar_bytes"] = ::Json::Int64(zct_slms::repo::ConfigRepo::getI64("max_avatar_bytes", 1048576));
+        if (req->method() == drogon::Post) {
+          const auto username = common::paramStr(req, "username"),
+                     nickname = common::paramStr(req, "nickname"),
+                     password = common::paramStr(req, "new_password");
+          if (!std::regex_match(username, std::regex("[A-Za-z0-9_.-]{3,64}")) ||
+              username == user->username || nickname.empty() || nickname.size() > 96)
+            throw std::runtime_error("请设置新的用户名和昵称");
+          if (!password.empty() && (password.size() < 12 || password.size() > 256))
+            throw std::runtime_error("密码须为 12–256 字节，或留空暂不设置");
+          const auto avatar = common::paramStr(req, "avatar", suggested_avatar);
+          if (!profileAvatarAllowed(avatar, suggested_avatar)) throw std::runtime_error("头像超过大小限制或格式不支持");
+          zct_slms::moderation::check(username);
+          zct_slms::moderation::check(nickname);
+          const auto hp = password.empty() ? zct_slms::service::HashedPassword{} : zct_slms::service::hashPassword(password);
+          auto& db = zct_slms::db::Database::instance();
+          if (!db.transaction([&] {
+            if (zct_slms::repo::ConfigRepo::getBool(profile_key, false)) return false;
+            if (zct_slms::repo::UserRepo::findByUsername(username)) throw std::runtime_error("用户名已存在");
+            db.execParams("UPDATE users SET username = ?,display_name = ?,updated_at = ? WHERE id = ?", username, nickname, now(), a.user_id);
+            zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(a.user_id) + ":nickname", nickname, now());
+            zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(a.user_id) + ":avatar", avatar, now());
+            if (!password.empty()) {
+              db.execParams("UPDATE users SET password_hash = ?,salt = ? WHERE id = ?", hp.hash, hp.salt, a.user_id);
+              zct_slms::repo::ConfigRepo::set("identity_password_pending:" + std::to_string(a.user_id), "0", now());
+            }
+            zct_slms::repo::ConfigRepo::set(profile_key, "1", now());
+            return true;
+          })) throw std::runtime_error("资料已设置，请刷新页面");
+          out["required"] = false;
+          out["username"] = username;
+          out["nickname"] = nickname;
+          out["login_required"] = false;
+        }
+        ok(cb, out);
+        return;
+      }
+      out["profile_setup"] = false;
       if (req->method() == drogon::Post) {
         if (!out["required"].asBool())
           throw std::runtime_error("请在账号设置中修改密码");

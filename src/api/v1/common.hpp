@@ -226,7 +226,14 @@ inline std::string paramStr(
             zct_slms::apiLog("-> {} {} from {}", method, path, ip);
             try {
                 auto req_path = req->path();
-                if(req_path!="/api/v1/auth/onboarding"&&req_path!="/api/v1/auth/logout"&&req_path!="/api/v1/system/ping"&&req_path!="/api/v1/auth/captcha"){auto auth=zct_slms::service::AuthService::authenticateSession(authBearer(req));if(auth.success&&forcePassword(auth.user_type,auth.user_id)){cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(2010,"为了您的账号安全请设置新的密码")));return;}}
+                const bool login_entry = req_path == "/api/v1/auth/connect/options" ||
+                    req_path == "/api/v1/auth/owner/login" || req_path == "/api/v1/auth/admin/login" || req_path == "/api/v1/auth/subuser/login" ||
+                    req_path == "/api/v1/auth/factors/passkey/start" || req_path == "/api/v1/auth/factors/primary" ||
+                    req_path == "/api/v1/auth/factors/verify" || req_path == "/api/v1/auth/factors/code" ||
+                    req_path == "/api/v1/auth/connect/start" || req_path == "/api/v1/auth/connect/exchange" ||
+                    req_path == "/api/v1/auth/connect/code" || req_path == "/api/v1/auth/connect/verify" ||
+                    req_path.rfind("/api/v1/auth/connect/callback/", 0) == 0;
+                if(!login_entry&&req_path!="/api/v1/auth/onboarding"&&req_path!="/api/v1/auth/logout"&&req_path!="/api/v1/system/ping"&&req_path!="/api/v1/auth/captcha"){auto auth=zct_slms::service::AuthService::authenticateSession(authBearer(req));if(auth.success&&forcePassword(auth.user_type,auth.user_id)){cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(2010,"为了您的账号安全请设置新的密码")));return;}}
 
                 if (req_path.rfind("/api/v1/admin/", 0) == 0) {
                     std::string bearer = authBearer(req);

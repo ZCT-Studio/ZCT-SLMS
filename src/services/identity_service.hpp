@@ -63,7 +63,7 @@ inline std::string form(const std::map<std::string, std::string> &values) {
 }
 inline const std::vector<std::string> secrets = {
     "smtp_password", "aliyun_secret", "twilio_token", "github_secret",
-    "microsoft_secret"};
+    "microsoft_secret", "google_secret", "telegram_secret", "gitlab_secret", "discord_secret"};
 inline std::string masterKey() {
   static const std::string key = []() {
     const auto env = std::getenv("ZCT_SLMS_CORE_AUTH_MASTER_KEY");

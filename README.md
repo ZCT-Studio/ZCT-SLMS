@@ -108,3 +108,13 @@ Docker 镜像拥有独立的用户空间，基础镜像版本不等同于宿主�
 将前端静态发布包解压到后端工作目录，确保 `ZCT-SLMS-Web/index.html` 存在（不要再多套一层同名目录）。从该工作目录启动后端，访问后端端口即可打开页面；React 页面路径支持直接访问和刷新。API 与不存在的资源仍返回 404。启动日志会打印实际静态目录。
 
 同域托管时，`runtime-config.js` 的 `apiBaseUrl` 留空。Docker 可将前端目录只读挂载到 `/app/ZCT-SLMS-Web`，前端仍可独立更新。
+
+## Google 与 Telegram OAuth
+
+安全设置支持 Google Web OAuth 客户端和 Telegram OIDC（BotFather Login Widget，RS256）。回调地址使用后端可访问地址，分别加 `/api/v1/auth/connect/callback/google`、`/api/v1/auth/connect/callback/telegram`。Telegram 还需在 Allowed URLs 中登记前端源地址及完整回调。客户端密钥加密保存，普通配置读取不返回明文。
+
+两者沿用 state、PKCE、短时一次性票据及浏览器验证器，支持自动注册、账号绑定、二次验证与解绑工单；第三方登录不要求人机验证。Telegram ID Token 使用固定官方 JWKS 验签并校验发行方、客户端、有效期和 nonce，不信任未经验证的 JWT 内容。
+
+版本号统一修改根目录 `VERSION`（支持 `2.2.0-beta.1` 等 SemVer 预发布版本）；CMake 配置时生成版本头文件，供程序和构建使用。
+
+推送 `v*` 发布标签时，CI 要求标签去掉 `v` 后与 `VERSION` 完全一致；不一致会报错并阻止发布。

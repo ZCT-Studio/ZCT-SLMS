@@ -1,0 +1,2 @@
+#pragma once
+#define ZCT_SLMS_VERSION "@ZCT_SLMS_VERSION@"

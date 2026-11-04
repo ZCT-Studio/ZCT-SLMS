@@ -13,7 +13,17 @@ permissions:
   contents: read
 
 jobs:
+    version-check:
+        name: Validate release version
+        runs-on: ubuntu-22.04
+        steps:
+            - uses: actions/checkout@v4
+            - name: Compare release tag with VERSION
+              shell: bash
+              run: bash .github/scripts/check-version.sh
+
     windows-x64:
+        needs: [version-check]
         runs-on: windows-2022
         steps:
             - uses: actions/checkout@v4
@@ -41,7 +51,7 @@ jobs:
                   Copy-Item config/config.example.yaml dist/config/config.example.yaml
                   Copy-Item config/config.example.yaml dist/config/config.yaml
                   Copy-Item migrations dist/migrations -Recurse
-                  Copy-Item .env.example, README.md, LICENSE dist/
+                  Copy-Item .env.example, README.md, LICENSE, VERSION dist/
                   if (!(Test-Path dist/migrations/sqlite)) { throw 'Missing SQLite migrations' }
             - uses: actions/upload-artifact@v4
               with:
@@ -51,6 +61,7 @@ jobs:
                   if-no-files-found: error
     
     linux-x64:
+        needs: [version-check]
         runs-on: ubuntu-22.04
         env:
             CC: gcc-13
@@ -92,7 +103,7 @@ jobs:
                   cp config/config.example.yaml dist/config/config.example.yaml
                   cp config/config.example.yaml dist/config/config.yaml
                   cp -r migrations dist/migrations
-                  cp .env.example README.md LICENSE dist/
+                  cp .env.example README.md LICENSE VERSION dist/
                   test -d dist/migrations/sqlite
             - uses: actions/upload-artifact@v4
               with:
@@ -102,6 +113,7 @@ jobs:
                   if-no-files-found: error
     
     linux-arm64:
+        needs: [version-check]
         runs-on: ubuntu-22.04-arm
         env:
             CC: gcc-13
@@ -143,7 +155,7 @@ jobs:
                   cp config/config.example.yaml dist/config/config.example.yaml
                   cp config/config.example.yaml dist/config/config.yaml
                   cp -r migrations dist/migrations
-                  cp .env.example README.md LICENSE dist/
+                  cp .env.example README.md LICENSE VERSION dist/
                   test -d dist/migrations/sqlite
             - uses: actions/upload-artifact@v4
               with:
@@ -277,7 +289,7 @@ jobs:
                   for platform in ZCT-SLMS-windows-x64 ZCT-SLMS-linux-x64 ZCT-SLMS-linux-arm64; do
                     directory="artifacts/$platform"
                     test -d "$directory"
-                    for required in .env.example README.md LICENSE config/config.yaml config/config.example.yaml migrations/001_initial.sql; do
+                    for required in .env.example README.md LICENSE VERSION config/config.yaml config/config.example.yaml migrations/001_initial.sql; do
                       test -s "$directory/$required"
                     done
                     package_dir="$(mktemp -d "$RUNNER_TEMP/zct-slms-package.XXXXXX")"

@@ -100,7 +100,7 @@ inline std::vector<std::string> methods(const Json &session, const Json &a) {
              "SELECT provider FROM auth_identities WHERE user_id = ?",
              session["user_id"].asInt64())) {
       auto p = zct_slms::repo::getStr(row, "provider");
-      if ((p == "github" || p == "microsoft") && ready(cfg, p))
+      if ((p == "github" || p == "microsoft" || p == "google" || p == "telegram" || p == "gitlab" || p == "discord") && ready(cfg, p))
         out.push_back(p);
     }
   }

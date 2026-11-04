@@ -124,9 +124,8 @@ inline void requestClosure(const Req &req, Callback &&cb) {
     auto role = s["user_type"].asString();
     if (role == "ADMIN") throw std::runtime_error("管理员账号禁止注销");
     auto uid = s["user_id"].asInt64();
-    if (!zct_slms::authorization::consumeClosure(req,
-                                            common::paramStr(req, "password")))
-      throw std::runtime_error("请重新完成两种登录方式验证后申请注销");
+    if (common::paramStr(req, "confirm_username") != s["username"].asString())
+      throw std::runtime_error("请输入当前账号的完整用户名以确认注销申请");
     auto reason = common::paramStr(req, "reason");
     if (reason.size() < 10 || reason.size() > 4000)
       throw std::runtime_error("注销原因需10–4000字节");
@@ -160,7 +159,7 @@ inline void requestClosure(const Req &req, Callback &&cb) {
                         "ticket_messages(id,ticket_id,sender_role,sender_id,"
                         "body,created_at) VALUES (?,?,?,?,?,?)",
                         zct_slms::tickets::messageId(), id, role, uid,
-                        "已完成两种登录方式验证。注销原因：" + reason, now());
+                        "已输入本人用户名确认。注销原因：" + reason, now());
           return true;
         }))
       throw std::runtime_error("申请提交失败");

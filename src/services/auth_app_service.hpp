@@ -38,10 +38,12 @@ namespace zct_slms::service {
     }
 
     inline bool verifyPassword(std::string_view password, const std::string& hash, const std::string& salt) {
+        if (hash.empty() || salt.empty() || hash.starts_with("!identity:")) return false;
         #if defined(ZCT_SLMS_HAS_ARGON2)
         return zct_slms::crypto::argon2idVerify(password, salt, hash);
         #else
         auto actual = zct_slms::crypto::sha512Hex(salt + std::string(password) + salt);
+        if (actual.size() != hash.size()) return false;
         volatile unsigned char diff = 0;
         for (size_t i = 0; i < actual.size() && i < hash.size(); ++i)
             diff |= actual[i] ^ hash[i];

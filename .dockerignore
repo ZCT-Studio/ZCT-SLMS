@@ -1,6 +1,7 @@
 # Send only build inputs; exclude local secrets, databases, backups and build trees.
 **
 !CMakeLists.txt
+!VERSION
 !vcpkg.json
 !cmake/
 !cmake/**
