@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/security_identity.hpp"
 
 namespace zct_slms::human {
@@ -311,7 +312,6 @@ namespace zct_slms::human {
                                  "passkey_enabled",
                                  "recovery_email_enabled",
                                  "recovery_phone_enabled",
-                                 "recovery_totp_enabled",
                                  "recovery_passkey_enabled",
                                  "recovery_ticket_enabled"
                              })

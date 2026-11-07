@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/portal_accounts.hpp"
 
 namespace zct_slms::portal_auth {
@@ -138,6 +139,30 @@ namespace zct_slms::portal_auth {
         return out;
     }
 
+    inline bool secondFactorMethod(const std::string& method) {
+        return method == "totp" || method == "passkey" || method == "email" || method == "phone";
+    }
+
+    inline bool sameFactor(const std::string& a, const std::string& b) {
+        const auto code = [](const std::string& v) { return v == "email" || v == "phone"; };
+        return a == b || (code(a) && code(b));
+    }
+
+    inline std::vector<std::string> secondaryMethods(const Json& session, const Json& a, const std::string& primary) {
+        auto available = methods(session, a);
+        available.erase(
+            std::remove_if(
+                available.begin(),
+                available.end(),
+                [&](const auto& method) {
+                    return !secondFactorMethod(method) || sameFactor(method, primary);
+                }
+            ),
+            available.end()
+        );
+        return available;
+    }
+
     inline Json publicKey(const Json& a, const std::string& challenge) {
         auto origin = zct_slms::factors::origin();
         Json pk;
@@ -163,9 +188,9 @@ namespace zct_slms::portal_auth {
     };
 
     inline std::map<std::string, Challenge> challenges;
-    inline std::function<Json(const std::string&, Challenge&, Json)>
+    inline std::function<Json(const std::string &, Challenge &, Json)>
     authorizationComplete;
-    inline std::function<void(const Json&, const Json&)> twoFactorCompleted;
+    inline std::function<void(const Json &, const Json &)> twoFactorCompleted;
 
     inline void pruneChallenges() {
         for (auto it = challenges.begin(); it != challenges.end();)
@@ -189,15 +214,30 @@ namespace zct_slms::portal_auth {
         auto a = zct_slms::factors::load(key), settings = zct_slms::factors::settings();
         auto enrolled = methods(session, a);
         auto primary = session.get("auth_method", "password").asString();
+        const auto second = secondaryMethods(session, a, primary);
+        const bool hasSecond = !second.empty() || !a["recovery"].empty();
+        const bool forcedSetup = zct_slms::portal::forceRequired(session["user_type"].asString(), session["user_id"].asInt64());
+        if (settings.get("two_factor_enabled", false).asBool() && !forcedSetup && !hasSecond) {
+            const bool alternative = std::any_of(
+                enrolled.begin(),
+                enrolled.end(),
+                [&](const auto& method) {
+                    return method != "totp" && !sameFactor(method, primary);
+                }
+            );
+            if (alternative) {
+                if (session.isMember("token")) zct_slms::repo::SessionRepo::revokeByHash(zct_slms::crypto::sha256Hex(session["token"].asString()));
+                throw std::runtime_error("当前登录方式没有可用的第二因素，请使用其他登录方式或先绑定第二因素");
+            }
+        }
         if (!settings.get("two_factor_enabled", false).asBool() ||
             zct_slms::portal::forceRequired(
                 session["user_type"].asString(),
                 session["user_id"].asInt64()
             ) ||
-            enrolled.size() < 2) {
+            !hasSecond) {
             session["second_factor_needed"] =
-                settings.get("two_factor_enabled", false).asBool() &&
-                enrolled.size() < 2;
+                settings.get("two_factor_enabled", false).asBool() && !hasSecond;
             session.removeMember("auth_method");
             return session;
         }
@@ -236,9 +276,7 @@ namespace zct_slms::portal_auth {
         out["challenge_id"] = id;
         out["primary_method"] = primary;
         out["methods"] = Json(::Json::arrayValue);
-        for (auto& method : enrolled)
-            if (method != primary)
-                out["methods"].append(method);
+        for (const auto& method : second) out["methods"].append(method);
         if (!rp.empty())
             out["public_key"] = publicKey(a, challenge);
         return out;
@@ -330,27 +368,7 @@ namespace zct_slms::portal_auth {
             std::scoped_lock lock(guard, zct_slms::factors::guard);
             auto method = common::paramStr(req, "method");
             Json session;
-            if (method == "totp") {
-                session = findAccount(
-                    roleName(common::paramStr(req, "role", "USER")),
-                    common::paramStr(req, "username")
-                );
-                auto key = zct_slms::factors::accountKey(
-                    session["user_type"].asString(),
-                    session["user_id"].asInt64()
-                );
-                auto a = zct_slms::factors::load(key);
-                {
-                    std::lock_guard limit(mutex);
-                    prune();
-                    rate("totp-login:" + key, 6, 60);
-                    rate("totp-login-ip:" + common::clientIp(req), 30, 60);
-                }
-                if (!a.get("totp_enabled", false).asBool() ||
-                    !zct_slms::factors::checkTotp(a, common::paramStr(req, "code")))
-                    throw std::runtime_error("账号或动态验证码不正确");
-                zct_slms::factors::store(key, a);
-            } else if (method == "passkey") {
+            if (method == "passkey") {
                 auto id = common::paramStr(req, "challenge_id");
                 auto& p = pending(id, common::clientIp(req), common::clientUa(req));
                 if (p.kind != "primary")
@@ -395,7 +413,7 @@ namespace zct_slms::portal_auth {
                     auto& p =
                         pending(id, common::clientIp(req), common::clientUa(req), false);
                     if ((p.kind != "secondary" && p.kind != "authorize") ||
-                        p.primary == method || (method != "email" && method != "phone"))
+                        (!p.primary.empty() && sameFactor(p.primary, method)) || (method != "email" && method != "phone"))
                         throw std::runtime_error("不能使用此验证方式");
                     auto uid = p.session["user_id"].asInt64();
                     auto bound = contactsFor(p.session["user_type"].asString(), uid);
@@ -446,6 +464,10 @@ namespace zct_slms::portal_auth {
             if (p.kind != "secondary" && p.kind != "authorize")
                 throw std::runtime_error("验证用途不匹配");
             auto a = zct_slms::factors::load(p.account);
+            const bool secondStep = p.kind == "secondary" || (p.kind == "authorize" && !p.primary.empty());
+            if (secondStep && !zct_slms::factors::settings().get("two_factor_enabled", false).asBool()) throw std::runtime_error("双重验证已关闭，请重新开始");
+            if (secondStep && method != "recovery" && !secondFactorMethod(method)) throw std::runtime_error("该方式不能作为第二因素");
+            if (!secondStep && method == "totp" && zct_slms::factors::settings().get("two_factor_enabled", false).asBool()) throw std::runtime_error("动态令牌仅可作为第二因素");
             if (method == "recovery") {
                 if (p.session.get("_closure", false).asBool())
                     throw std::runtime_error("注销需要两种登录方式，不能使用恢复码代替");
@@ -455,7 +477,7 @@ namespace zct_slms::portal_auth {
                     throw std::runtime_error("恢复码无效或已使用");
             } else {
                 auto available = methods(p.session, a);
-                if (method == p.primary || std::find(
+                if ((!p.primary.empty() && sameFactor(method, p.primary)) || std::find(
                         available.begin(),
                         available.end(),
                         method
@@ -521,7 +543,7 @@ namespace zct_slms::portal_auth {
         auto provider = common::paramStr(req, "provider");
         auto a = zct_slms::factors::load(p.account);
         auto available = methods(p.session, a);
-        if ((p.kind != "secondary" && p.kind != "authorize") ||
+        if (p.kind != "authorize" || !p.primary.empty() ||
             p.primary == provider || p.session["user_type"].asString() != "USER" ||
             std::find(available.begin(), available.end(), provider) ==
             available.end())
@@ -538,7 +560,7 @@ namespace zct_slms::portal_auth {
     ) {
         std::scoped_lock lock(guard, zct_slms::factors::guard);
         auto& p = pending(id, ip, ua);
-        if ((p.kind != "secondary" && p.kind != "authorize") ||
+        if (p.kind != "authorize" || !p.primary.empty() ||
             p.primary == provider || p.session["user_type"].asString() != "USER" ||
             p.session["user_id"].asInt64() != uid)
             throw std::runtime_error("授权账号不匹配");
@@ -560,8 +582,12 @@ namespace zct_slms::portal_auth {
             auto cfg = zct_slms::factors::settings();
             Json out;
             out["two_factor_enabled"] = cfg.get("two_factor_enabled", false);
-            out["needs_second_method"] =
-                cfg.get("two_factor_enabled", false).asBool() && list.size() < 2;
+            bool hasUsableSecond = !a["recovery"].empty();
+            for (const auto& first : list) {
+                if (first == "totp") continue;
+                for (const auto& second : list) if (!sameFactor(second, first) && secondFactorMethod(second)) hasUsableSecond = true;
+            }
+            out["needs_second_method"] = cfg.get("two_factor_enabled", false).asBool() && !hasUsableSecond;
             out["method_count"] = static_cast<int>(list.size());
             ok(cb, out);
         } catch (const std::exception& e) {

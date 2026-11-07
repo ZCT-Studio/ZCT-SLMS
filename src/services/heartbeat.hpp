@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/security_identity.hpp"
 
 namespace zct_slms::heartbeat {

@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
+
 #include "api/v1/uih.h"
 #include "services/app_secret_policy.hpp"
 
 namespace zct_slms::inside::api::v1::app::secret::view {
-    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr &)>&& cb) {
+    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& cb) {
         namespace c = zct_slms::inside::api::v1::common;
         const auto type = c::currentUserType(req);
         const auto uid = c::currentUserId(req);

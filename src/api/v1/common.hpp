@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
 
 #include <chrono>
@@ -22,15 +23,15 @@
 #include "services/security_service.hpp"
 
 namespace zct_slms::inside::api::v1::common {
-    inline std::function<bool(const drogon::HttpRequestPtr &, const std::string &)> sensitiveAuthorization = [](const drogon::HttpRequestPtr&, const std::string&) {
+    inline std::function<bool(const drogon::HttpRequestPtr&, const std::string&)> sensitiveAuthorization = [](const drogon::HttpRequestPtr&, const std::string&) {
         return false;
     };
-    inline std::function<Json::Value(Json::Value, const std::string &, const std::string &)> gateLogin = [](Json::Value value, const std::string&, const std::string&) {
+    inline std::function<Json::Value(Json::Value, const std::string&, const std::string&)> gateLogin = [](Json::Value value, const std::string&, const std::string&) {
         return value;
     };
-    inline std::function<void(const drogon::HttpRequestPtr &)> contentGuard = [](const drogon::HttpRequestPtr&) {};
-    inline std::function<void(const std::string &, const std::string &, int64_t)> reviewContentChanged = [](const std::string&, const std::string&, int64_t) {};
-    inline std::function<bool(const std::string &, int64_t)> forcePassword = [](const std::string&, int64_t) { return false; };
+    inline std::function<void(const drogon::HttpRequestPtr&)> contentGuard = [](const drogon::HttpRequestPtr&) {};
+    inline std::function<void(const std::string&, const std::string&, int64_t)> reviewContentChanged = [](const std::string&, const std::string&, int64_t) {};
+    inline std::function<bool(const std::string&, int64_t)> forcePassword = [](const std::string&, int64_t) { return false; };
 
     // ── URL k=v 解析（verify.hpp 原本有一份，提成公共） ──
     inline std::map<std::string, std::string> parseKvs(const std::string& body) {
@@ -215,7 +216,7 @@ namespace zct_slms::inside::api::v1::common {
     auto wrap(Fn fn) {
         return [fn = std::move(fn)](
             const drogon::HttpRequestPtr& req,
-            std::function<void(const drogon::HttpResponsePtr &)>&& cb
+            std::function<void(const drogon::HttpResponsePtr&)>&& cb
         ) {
             auto t0 = std::chrono::steady_clock::now();
             auto method = std::string(req->methodString());
@@ -423,9 +424,3 @@ namespace zct_slms::inside::api::v1::common {
         };
     }
 }
-
-
-
-
-
-

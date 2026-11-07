@@ -27,23 +27,29 @@ namespace {
             }
             zct_slms::db::MigrationRunner::runAll(migrations);
             zct_slms::logger().INFO("Migrations applied from: {}", migrations);
-            // Password-less identities have no password material, including legacy placeholders.
+
+            { // 2.3.x => 2.4.x 兼容性更新
+                zct_slms::tickets::migrateImageStorage();
+                zct_slms::tickets::migrateInlineImages();
+                zct_slms::identity::migrateAvatars();
+            }
+
             for (const auto& row : db.queryParams("SELECT id FROM users WHERE password_hash <> '' OR salt <> ''")) {
-                const auto uid = zct_slms::repo::getInt(row, "id");
-                if (zct_slms::repo::ConfigRepo::getBool("identity_password_pending:" + std::to_string(uid), false)) {
+                if (const auto uid = zct_slms::repo::getInt(row, "id"); zct_slms::repo::ConfigRepo::getBool("identity_password_pending:" + std::to_string(uid), false)) {
                     db.execParams("UPDATE users SET password_hash = '', salt = '' WHERE id = ?", uid);
                 }
-            }
+            } // 第三方登录未设置密码处理
             const auto count = db.queryScalar("SELECT COUNT(*) FROM admins");
             if (!count) throw std::runtime_error("Cannot inspect administrator accounts");
             if (*count == "0") {
                 const auto password = zct_slms::crypto::randomHex(24);
-                const auto hp = zct_slms::service::hashPassword(password);
-                if (hp.hash.empty()) throw std::runtime_error("Cannot hash initial administrator password");
-                const auto id = zct_slms::repo::AdminRepo::insert("admin", hp.hash, hp.salt, "Administrator", std::time(nullptr));
+                const auto [hash, salt] = zct_slms::service::hashPassword(password);
+                if (hash.empty()) throw std::runtime_error("Cannot hash initial administrator password");
+                const auto id = zct_slms::repo::AdminRepo::insert("admin", hash, salt, "Administrator", std::time(nullptr));
                 zct_slms::repo::ConfigRepo::set("admin_initial_setup_done:" + std::to_string(id), "0", std::time(nullptr));
                 zct_slms::logger().WARN("Initial administrator: username=admin password={}. Change it immediately.", password);
             }
+            zct_slms::recovery::applyAdminRecovery();
             return true;
         } catch (const std::exception& e) {
             zct_slms::logger().ERROR("Database bootstrap FAILED: {}", e.what());
@@ -120,9 +126,11 @@ int main(const int argc, char** argv) {
 
         const auto web_root = std::filesystem::absolute("./ZCT-SLMS-Web");
         const auto web_index = web_root / "index.html";
-        zct_slms::logger().INFO("Web document root: {}", web_root.string());
+
         if (!std::filesystem::is_regular_file(web_index)) {
-            zct_slms::logger().WARN("Web index not found: {}. Extract the frontend release into this directory.", web_index.string());
+            zct_slms::logger().WARN("Web index not found: {}. If you need to use Drogon as the web driver, please move the frontend here", web_index.string());
+        } else {
+            zct_slms::logger().INFO("Web document root: {}", web_root.string());
         }
 
         svr.setDefaultHandler(

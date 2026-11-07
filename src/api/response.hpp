@@ -1,5 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
 
 #include <utility>
@@ -75,4 +76,3 @@ namespace zct_slms::api {
     #ifdef END_OF_NAMESPACE_ZCT_SLMS_API_VOID
     #endif
 }
-

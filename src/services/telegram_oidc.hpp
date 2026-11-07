@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/identity_service.hpp"
 #include <openssl/rsa.h>
 #include <memory>

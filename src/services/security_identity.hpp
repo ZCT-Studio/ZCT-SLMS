@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "api/v1/auth/identity.hpp"
 #include <openssl/core_names.h>
 #include <openssl/x509.h>
@@ -653,7 +654,7 @@ namespace zct_slms::factors {
             [](auto req, const Callback& cb) {
                 try {
                     auto action = common::paramStr(req, "action");
-                    auto user = auth(req, req->method() == drogon::Post);
+                    auto user = auth(req, req->method() == drogon::Post && action != "passkey-confirm");
                     std::lock_guard lock(guard);
                     const auto key = accountKey(user.user_type, user.user_id);
                     auto a = load(key), s = settings();
@@ -702,8 +703,11 @@ namespace zct_slms::factors {
                             clean();
                             auto id = zct_slms::crypto::randomHex(32),
                                  challenge = b64url(zct_slms::crypto::randomBytes(32));
+                            Json registrationProof;
+                            registrationProof["session_hash"] = zct_slms::crypto::sha256Hex(common::authBearer(req));
+                            registrationProof["version"] = a.get("version", 0);
                             pending[id] = {
-                                    Json{},
+                                    registrationProof,
                                     common::clientIp(req),
                                     common::clientUa(req),
                                     challenge,
@@ -740,7 +744,9 @@ namespace zct_slms::factors {
                             auto it = pending.find(common::paramStr(req, "challenge_id"));
                             if (it == pending.end() || it->second.action != "register" ||
                                 it->second.account != key || it->second.expires < now() ||
-                                it->second.ip != common::clientIp(req))
+                                it->second.ip != common::clientIp(req) || it->second.ua != common::clientUa(req) ||
+                                it->second.session.get("session_hash", "").asString() != zct_slms::crypto::sha256Hex(common::authBearer(req)) ||
+                                it->second.session.get("version", -1).asInt() != a.get("version", 0).asInt())
                                 throw std::runtime_error("注册挑战无效");
                             auto p = it->second;
                             pending.erase(it);

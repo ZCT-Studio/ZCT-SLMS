@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/vouchers.hpp"
 #include "services/oauth_profile.hpp"
 
@@ -87,7 +88,7 @@ namespace zct_slms::portal {
                                     if (zct_slms::repo::UserRepo::findByUsername(username)) throw std::runtime_error("用户名已存在");
                                     db.execParams("UPDATE users SET username = ?,display_name = ?,updated_at = ? WHERE id = ?", username, nickname, now(), a.user_id);
                                     zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(a.user_id) + ":nickname", nickname, now());
-                                    zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(a.user_id) + ":avatar", avatar, now());
+                                    zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(a.user_id) + ":avatar", zct_slms::identity::persistAvatar(avatar), now());
                                     if (!password.empty()) {
                                         db.execParams("UPDATE users SET password_hash = ?,salt = ? WHERE id = ?", hp.hash, hp.salt, a.user_id);
                                         zct_slms::repo::ConfigRepo::set("identity_password_pending:" + std::to_string(a.user_id), "0", now());

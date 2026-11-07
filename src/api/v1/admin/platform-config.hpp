@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "api/v1/auth/identity.hpp"
 #include <fstream>
 #ifdef _WIN32

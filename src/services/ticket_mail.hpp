@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/ticket_management.hpp"
 #include <set>
 #include <ctime>

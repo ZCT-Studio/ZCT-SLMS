@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/tickets.hpp"
 
 namespace zct_slms::tickets {
