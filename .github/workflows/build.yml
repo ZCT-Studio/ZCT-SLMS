@@ -52,7 +52,6 @@ jobs:
                     $ErrorActionPreference = 'Stop'
                     New-Item -ItemType Directory -Force dist/config | Out-Null
                     Copy-Item config/config.example.yaml dist/config/config.example.yaml
-                    Copy-Item config/config.example.yaml dist/config/config.yaml
                     Copy-Item migrations dist/migrations -Recurse
                     Copy-Item .env.example, README.md, LICENSE, VERSION dist/
                     if (!(Test-Path dist/migrations/sqlite)) { throw 'Missing SQLite migrations' }
@@ -104,7 +103,6 @@ jobs:
                     cp build/ZCT-SLMS dist/
                     mkdir -p dist/config
                     cp config/config.example.yaml dist/config/config.example.yaml
-                    cp config/config.example.yaml dist/config/config.yaml
                     cp -r migrations dist/migrations
                     cp .env.example README.md LICENSE VERSION dist/
                     test -d dist/migrations/sqlite
@@ -156,7 +154,6 @@ jobs:
                     cp build/ZCT-SLMS dist/
                     mkdir -p dist/config
                     cp config/config.example.yaml dist/config/config.example.yaml
-                    cp config/config.example.yaml dist/config/config.yaml
                     cp -r migrations dist/migrations
                     cp .env.example README.md LICENSE VERSION dist/
                     test -d dist/migrations/sqlite
@@ -292,7 +289,7 @@ jobs:
                     for platform in ZCT-SLMS-windows-x64 ZCT-SLMS-linux-x64 ZCT-SLMS-linux-arm64; do
                       directory="artifacts/$platform"
                       test -d "$directory"
-                      for required in .env.example README.md LICENSE VERSION config/config.yaml config/config.example.yaml migrations/001_initial.sql; do
+                      for required in .env.example README.md LICENSE VERSION config/config.example.yaml migrations/001_initial.sql; do
                         test -s "$directory/$required"
                       done
                       package_dir="$(mktemp -d "$RUNNER_TEMP/zct-slms-package.XXXXXX")"
