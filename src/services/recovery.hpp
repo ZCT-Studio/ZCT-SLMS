@@ -2,7 +2,9 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/portal_auth.hpp"
+#include <iostream>
 
 namespace zct_slms::recovery {
     using namespace zct_slms::identity;
@@ -88,6 +90,109 @@ namespace zct_slms::recovery {
         return flow;
     }
 
+    inline std::mutex adminRecoveryMutex;
+    inline std::map<std::string, int64_t> adminRecoveryIp;
+
+    inline std::string adminRecoveryToken(const std::string& username, const std::string& hash, int64_t hour) {
+        const auto aes = std::getenv("ZCT_SLMS_CORE_AES_KEY");
+        const auto key = zct_slms::crypto::hmacSha256(std::string("zct-slms-admin-recovery-key-v1:") + (aes ? aes : ""), masterKey());
+        return zct_slms::crypto::hmacSha256Hex("zct-slms-admin-recovery-v1:" + username + ":" + hash + ":" + std::to_string(hour), key);
+    }
+
+    inline void adminRecoveryIssue(const Req& req, Callback&& cb) {
+        try {
+            const auto ip = common::clientIp(req);
+            const auto timestamp = now();
+            if (common::paramStr(req, "action") == "window") {
+                Json window;
+                window["ip"] = ip;
+                window["server_time"] = ::Json::Int64(timestamp);
+                window["expires_at"] = ::Json::Int64((timestamp / 3600 + 1) * 3600);
+                auto response = drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(window));
+                response->addHeader("Cache-Control", "no-store");
+                cb(response);
+                return;
+            }
+            std::lock_guard lock(adminRecoveryMutex);
+            for (auto it = adminRecoveryIp.begin(); it != adminRecoveryIp.end();) {
+                if (it->second <= timestamp) it = adminRecoveryIp.erase(it);
+                else ++it;
+            }
+            if (adminRecoveryIp.contains(ip)) throw std::runtime_error("此 IP 已生成凭证，请等待 24 小时或重启服务端");
+            const auto username = common::paramStr(req, "username");
+            if (username.empty() || username.size() > 64 || username.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-") != std::string::npos)
+                throw std::runtime_error("请输入有效的用户名");
+            const auto user = zct_slms::repo::AdminRepo::findByUsername(username);
+            const bool eligible = user && user->status == 1 && zct_slms::repo::ConfigRepo::get("staff_role:" + std::to_string(user->id), "ADMIN") == "ADMIN";
+            const auto hash = eligible ? user->password_hash : zct_slms::crypto::hmacSha256Hex("unavailable-account:" + username, masterKey());
+            const auto credential = adminRecoveryToken(username, hash, timestamp / 3600);
+            adminRecoveryIp[ip] = timestamp + 86400;
+            zct_slms::logger().WARN("Admin recovery credential issued for account {} from IP {}", username, ip);
+            const auto level = zct_slms::logLevelFromString(zct_slms::AppConfig::instance().logging().level);
+            if (level == ZCLibLog::LogLevel::ERROR || level == ZCLibLog::LogLevel::FATAL || level == ZCLibLog::LogLevel::OFF)
+                std::cerr << "Admin recovery credential issued for account " << username << " from IP " << ip << std::endl;
+            Json out;
+            out["credential"] = credential;
+            out["ip"] = ip;
+            out["expires_at"] = ::Json::Int64((timestamp / 3600 + 1) * 3600);
+            out["server_time"] = ::Json::Int64(timestamp);
+            auto response = drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk(out));
+            response->addHeader("Cache-Control", "no-store");
+            cb(response);
+        } catch (const std::exception& e) { fail(cb, e.what()); }
+    }
+
+    inline void invalidAdminRecovery(const char* message) {
+        zct_slms::logger().ERROR("{}", message);
+        const auto level = zct_slms::logLevelFromString(zct_slms::AppConfig::instance().logging().level);
+        if (level == ZCLibLog::LogLevel::FATAL || level == ZCLibLog::LogLevel::OFF)
+            std::cerr << message << std::endl;
+    }
+
+    inline void applyAdminRecovery() {
+        const auto env = std::getenv("ZCT_SLMS_CORE_ADMIN_RECOVERY_TOKEN");
+        if (!env || !*env) return;
+        const std::string token(env);
+        if (token.size() != 64 || token.find_first_not_of("0123456789abcdef") != std::string::npos) {
+            invalidAdminRecovery("Administrator recovery token has invalid format; password reset skipped. Remove it from environment.");
+            return;
+        }
+        auto& db = zct_slms::db::Database::instance();
+        const auto hour = now() / 3600;
+        for (const auto& row : db.queryParams("SELECT id,username,password_hash,status FROM admins")) {
+            const auto id = zct_slms::repo::getInt(row, "id");
+            if (zct_slms::repo::getInt(row, "status") != 1 || zct_slms::repo::ConfigRepo::get("staff_role:" + std::to_string(id), "ADMIN") != "ADMIN") continue;
+            const auto username = zct_slms::repo::getStr(row, "username");
+            const auto oldHash = zct_slms::repo::getStr(row, "password_hash");
+            if (!zct_slms::crypto::constantTimeEqual(token, adminRecoveryToken(username, oldHash, hour))) continue;
+            const auto temporary = zct_slms::crypto::randomHex(24);
+            const auto password = zct_slms::service::hashPassword(temporary);
+            if (password.hash.empty()) throw std::runtime_error("Cannot hash temporary administrator password");
+            if (!db.transaction(
+                [&] {
+                    db.execParams("UPDATE admins SET password_hash=?,salt=?,updated_at=? WHERE id=? AND password_hash=?", password.hash, password.salt, now(), id, oldHash);
+                    const auto updated = db.queryParams("SELECT password_hash FROM admins WHERE id=?", id);
+                    if (updated.empty() || zct_slms::repo::getStr(updated[0], "password_hash") != password.hash) return false;
+                    zct_slms::repo::ConfigRepo::set("force_password:ADMIN:" + std::to_string(id), "1", now());
+                    db.execParams("UPDATE sessions SET revoked=1 WHERE user_type=? AND user_id=?", "ADMIN", id);
+                    return true;
+                }
+            ))
+                throw std::runtime_error("Administrator recovery transaction failed");
+            zct_slms::logger().WARN(
+                "Administrator recovery: username={} temporary password={}. Remove ZCT_SLMS_CORE_ADMIN_RECOVERY_TOKEN and change the password immediately.",
+                username,
+                temporary
+            );
+            const auto level = zct_slms::logLevelFromString(zct_slms::AppConfig::instance().logging().level);
+            if (level == ZCLibLog::LogLevel::ERROR || level == ZCLibLog::LogLevel::FATAL || level == ZCLibLog::LogLevel::OFF)
+                std::cerr << "Administrator recovery: username=" << username << " temporary password=" << temporary <<
+                    ". Remove ZCT_SLMS_CORE_ADMIN_RECOVERY_TOKEN and change the password immediately." << std::endl;
+            return;
+        }
+        invalidAdminRecovery("Administrator recovery token invalid or expired; password reset skipped. Remove it from environment.");
+    }
+
     inline void options(const Req& req, Callback&& cb) {
         try {
             auto account = zct_slms::portal_auth::findAccount(
@@ -115,8 +220,7 @@ namespace zct_slms::recovery {
                 auto email = bound["email"];
                 out["email_domain"] = email.substr(email.find('@') + 1);
             }
-            if (allowed("totp") && a.get("totp_enabled", false).asBool())
-                out["methods"].append("totp");
+
             if (allowed("passkey") && !a["keys"].empty())
                 out["methods"].append("passkey");
             out["security_ticket_allowed"] = allowed("ticket");
@@ -226,43 +330,8 @@ namespace zct_slms::recovery {
         }
     }
 
-    inline void verifyTotp(const Req& req, Callback&& cb) {
-        try {
-            std::scoped_lock lock(guard, zct_slms::factors::guard);
-            if (!allowed("totp"))
-                throw std::runtime_error("动态令牌恢复尚未开放");
-            auto account = zct_slms::portal_auth::findAccount(
-                zct_slms::portal_auth::roleName(common::paramStr(req, "role", "USER")),
-                common::paramStr(req, "username")
-            );
-            throttle(req, account, "recover-totp", 6, 60);
-            auto key = zct_slms::factors::accountKey(
-                account["user_type"].asString(),
-                account["user_id"].asInt64()
-            );
-            auto a = zct_slms::factors::load(key);
-            if (!a.get("totp_enabled", false).asBool() ||
-                !zct_slms::factors::checkTotp(a, common::paramStr(req, "code")))
-                throw std::runtime_error("账号或动态验证码不正确");
-            zct_slms::factors::store(key, a);
-            account["recovery_factor_version"] = a.get("version", 0);
-            Flow flow{
-                    account,
-                    "totp",
-                    "",
-                    "reset",
-                    zct_slms::portal_auth::fingerprint(account),
-                    "",
-                    "",
-                    "",
-                    now() + 300
-                };
-            Json out;
-            out["reset_token"] = grant(flow);
-            ok(cb, out);
-        } catch (const std::exception& e) {
-            fail(cb, e.what());
-        }
+    inline void verifyTotp(const Req&, Callback&& cb) {
+        fail(cb, "动态令牌仅可作为双重验证的第二因素");
     }
 
     inline void passkeyStart(const Req& req, Callback&& cb) {

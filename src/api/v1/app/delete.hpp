@@ -1,5 +1,6 @@
 ﻿// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
 
 #include "api/v1/uih.h"
@@ -7,7 +8,7 @@
 namespace zct_slms::inside::api::v1::app::delete_ {
     inline void handle(
         const drogon::HttpRequestPtr& req,
-        std::function<void(const drogon::HttpResponsePtr &)>&& cb
+        std::function<void(const drogon::HttpResponsePtr&)>&& cb
     ) {
         const int64_t id = zct_slms::inside::api::v1::common::paramI64(req, "id");
         const auto current_type = zct_slms::inside::api::v1::common::currentUserType(req);
@@ -29,4 +30,3 @@ namespace zct_slms::inside::api::v1::app::delete_ {
         cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeOk()));
     }
 }
-

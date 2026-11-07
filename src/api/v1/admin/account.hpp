@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
+
 #include "api/v1/uih.h"
+#include "services/oauth_profile.hpp"
 
 namespace zct_slms::inside::api::v1::admin::account {
     inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& cb) {
@@ -12,11 +15,8 @@ namespace zct_slms::inside::api::v1::admin::account {
         const auto password = c::paramStr(req, "new_password");
         const auto display_name = c::paramStr(req, "display_name");
         const auto avatar = c::paramStr(req, "avatar");
-        const auto max_avatar = zct_slms::repo::ConfigRepo::getI64("max_avatar_bytes", 1048576);
-        if (avatar.size() > static_cast<size_t>(max_avatar * 4 / 3 + 256) || (
-                !avatar.empty() && avatar.rfind("data:image/png;base64,", 0) != 0 && avatar.rfind("data:image/jpeg;base64,", 0) != 0 && avatar.rfind("data:image/webp;base64,", 0)
-                != 0)) {
-            cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(zct_slms::api::ErrorCode::VALIDATION, "头像超过管理员设置的大小上限或格式不支持")));
+        if (!zct_slms::identity::profileAvatarAllowed(avatar, zct_slms::repo::ConfigRepo::get("profile:ADMIN:" + std::to_string(id) + ":avatar", ""))) {
+            cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(zct_slms::api::ErrorCode::VALIDATION, "Invalid avatar")));
             return;
         }
         auto fail = [&](int code, const std::string& message) { cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(code, message))); };
@@ -70,7 +70,7 @@ namespace zct_slms::inside::api::v1::admin::account {
                 );
                 zct_slms::repo::ConfigRepo::set("admin_initial_setup_done:" + std::to_string(id), "1", std::time(nullptr));
                 if (!display_name.empty()) zct_slms::repo::ConfigRepo::set("profile:ADMIN:" + std::to_string(id) + ":nickname", display_name, std::time(nullptr));
-                zct_slms::repo::ConfigRepo::set("profile:ADMIN:" + std::to_string(id) + ":avatar", avatar, std::time(nullptr));
+                zct_slms::repo::ConfigRepo::set("profile:ADMIN:" + std::to_string(id) + ":avatar", zct_slms::identity::persistAvatar(avatar), std::time(nullptr));
                 db.execParams("UPDATE sessions SET revoked = 1 WHERE user_type = ? AND user_id = ?", "ADMIN", id);
                 return true;
             }

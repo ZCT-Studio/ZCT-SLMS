@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
 
 #include "api/v1/common.hpp"
@@ -96,6 +97,7 @@ namespace zct_slms::api {
         zct_slms::inside::api::v1::common::reviewContentChanged = [](const std::string& type, const std::string& role, int64_t id) {
             zct_slms::repo::ConfigRepo::set("review_epoch:" + type + ":" + role + ":" + std::to_string(id), zct_slms::crypto::randomHex(16), std::time(nullptr));
         };
+        app.registerHandler("/api/v1/media/avatar", wrap(&zct_slms::identity::readAvatar), {Get});
         app.registerHandler("/api/v1/app/heartbeat", wrap(&zct_slms::heartbeat::settings), {Get, Post});
         app.registerHandler("/api/v1/support/review/detail", wrap(&zct_slms::review::detail), {Post});
         app.registerHandler("/api/v1/support/review/report", wrap(&zct_slms::review::report), {Post});
@@ -105,6 +107,7 @@ namespace zct_slms::api {
         app.registerHandler("/api/v1/tickets/notifications/code", wrap(&zct_slms::ticket_mail::sendCode), {Post});
         app.registerHandler("/api/v1/tickets/notifications/verify", wrap(&zct_slms::ticket_mail::verifyCode), {Post});
         app.registerHandler("/api/v1/auth/authorize/start", wrap(&zct_slms::authorization::start), {Post});
+        app.registerHandler("/api/v1/auth/recovery/admin-token", wrap(&zct_slms::recovery::adminRecoveryIssue), {Post});
         app.registerHandler("/api/v1/auth/recovery/options", wrap(&zct_slms::recovery::options), {Post});
         app.registerHandler("/api/v1/auth/recovery/code", wrap(zct_slms::human::secured(&zct_slms::recovery::sendCode)), {Post});
         app.registerHandler("/api/v1/auth/recovery/verify", wrap(&zct_slms::recovery::verifyCode), {Post});
@@ -680,4 +683,3 @@ namespace zct_slms::api {
         zct_slms::logger().INFO("All /api/v1 routes registered");
     }
 } // namespace zct_slms::api
-

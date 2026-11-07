@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
+
 #include "api/v1/uih.h"
 #include "services/oauth_profile.hpp"
 
@@ -27,7 +29,7 @@ namespace zct_slms::inside::api::v1::auth::profile {
             }
             const auto now = std::time(nullptr);
             zct_slms::repo::ConfigRepo::set(prefix + "nickname", name, now);
-            zct_slms::repo::ConfigRepo::set(prefix + "avatar", avatar, now);
+            zct_slms::repo::ConfigRepo::set(prefix + "avatar", zct_slms::identity::persistAvatar(avatar), now);
             c::reviewContentChanged("USER", auth.user_type, auth.user_id);
         }
         std::string default_name = auth.username;
@@ -43,7 +45,17 @@ namespace zct_slms::inside::api::v1::auth::profile {
         }
         Json::Value v;
         v["nickname"] = zct_slms::repo::ConfigRepo::get(prefix + "nickname", default_name);
-        v["avatar"] = zct_slms::repo::ConfigRepo::get(prefix + "avatar", "");
+        auto currentAvatar = zct_slms::repo::ConfigRepo::get(prefix + "avatar", "");
+        if (zct_slms::identity::safeAvatarUrl(currentAvatar)) {
+            try {
+                auto cached = zct_slms::identity::persistAvatar(currentAvatar);
+                if (cached != currentAvatar) {
+                    zct_slms::db::Database::instance().execParams("UPDATE system_config SET value=? WHERE key=? AND value=?", cached, prefix + "avatar", currentAvatar);
+                    currentAvatar = zct_slms::repo::ConfigRepo::get(prefix + "avatar", "");
+                }
+            } catch (const std::exception&) { /* Keep the original when storage is unavailable. */ }
+        }
+        v["avatar"] = currentAvatar;
         v["user_id"] = static_cast<Json::Int64>(auth.user_id);
         v["username"] = auth.username;
         v["user_type"] = auth.user_type;

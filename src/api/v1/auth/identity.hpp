@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/identity_service.hpp"
 #include "services/telegram_oidc.hpp"
 #include "services/oauth_profile.hpp"
@@ -702,7 +703,7 @@ namespace zct_slms::identity {
                             zct_slms::repo::ConfigRepo::set("identity_password_pending:" + std::to_string(uid), password.empty() ? "1" : "0", now());
                             zct_slms::repo::ConfigRepo::set("identity_profile_done:" + std::to_string(uid), "1", now());
                             zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(uid) + ":nickname", nickname, now());
-                            zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(uid) + ":avatar", avatar, now());
+                            zct_slms::repo::ConfigRepo::set("profile:USER:" + std::to_string(uid) + ":avatar", zct_slms::identity::persistAvatar(avatar), now());
                             return true;
                         }
                     ))

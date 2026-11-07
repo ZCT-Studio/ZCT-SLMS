@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/portal_auth.hpp"
 #include <string_view>
 
@@ -104,9 +105,15 @@ namespace zct_slms::authorization {
         const Json& a,
         const std::string& hash
     ) {
-        return zct_slms::factors::settings().get("two_factor_enabled", false).asBool() &&
-               zct_slms::portal_auth::methods(session, a).size() >= 2 &&
-               !trusted(session, a, hash);
+        const auto available = zct_slms::portal_auth::methods(session, a);
+        bool usable = false;
+        for (const auto& first : available) {
+            if (first == "totp") continue;
+            if (!a["recovery"].empty()) usable = true;
+            for (const auto& second : available)
+                if (!zct_slms::portal_auth::sameFactor(second, first) && zct_slms::portal_auth::secondFactorMethod(second)) usable = true;
+        }
+        return zct_slms::factors::settings().get("two_factor_enabled", false).asBool() && usable && !trusted(session, a, hash);
     }
 
     inline Json describe(
@@ -123,7 +130,8 @@ namespace zct_slms::authorization {
             requiresTwo(p.session, a, p.session["_authorization_session"].asString());
         out["methods"] = Json(::Json::arrayValue);
         for (const auto& method : zct_slms::portal_auth::methods(p.session, a))
-            if (method != p.primary)
+            if ((p.primary.empty() && (method != "totp" || !zct_slms::factors::settings().get("two_factor_enabled", false).asBool())) || (
+                    !p.primary.empty() && !zct_slms::portal_auth::sameFactor(method, p.primary) && zct_slms::portal_auth::secondFactorMethod(method)))
                 out["methods"].append(method);
         out["recovery_available"] = !p.session.get("_closure", false).asBool() &&
                                     !p.primary.empty() && !a["recovery"].empty();
@@ -139,8 +147,11 @@ namespace zct_slms::authorization {
     ) {
         const auto method = p.session["_verified_method"].asString(),
                    hash = p.session["_authorization_session"].asString();
+        const auto second = zct_slms::portal_auth::secondaryMethods(p.session, a, method);
+        if (p.primary.empty() && requiresTwo(p.session, a, hash) && second.empty() && a["recovery"].empty())
+            throw std::runtime_error("当前验证方式没有可用的第二因素，请选择其他验证方式");
         if (p.primary.empty() && (p.session.get("_closure", false).asBool() ||
-                                  requiresTwo(p.session, a, hash))) {
+                                  (requiresTwo(p.session, a, hash) && (!second.empty() || !a["recovery"].empty())))) {
             p.primary = method;
             p.challenge = b64url(zct_slms::crypto::randomBytes(32));
             p.attempts = 0;

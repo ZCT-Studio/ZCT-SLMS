@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
 
 #include <exception>
@@ -18,4 +19,3 @@
 #include "services/license_service.hpp"
 #include "services/security_service.hpp"
 #include "services/subuser_update_service.hpp"
-

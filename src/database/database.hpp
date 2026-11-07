@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
 
 #include <cstddef>
@@ -15,7 +16,6 @@
 #include "config/app_config.hpp"
 #include "common/logger.hpp"
 
-// 三个具体后端实现
 #include "database/sqlite_database.hpp"
 #ifdef ZCT_SLMS_HAS_PGSQL
 #include "database/pgsql_database.hpp"
@@ -25,7 +25,6 @@
 #endif
 
 namespace zct_slms::db {
-    // ── 门面类：持有一个 IDatabase 实例，repo/service 层零改动 ──
     class Database {
     public:
         static Database& instance() {
@@ -33,7 +32,6 @@ namespace zct_slms::db {
             return inst;
         }
 
-        // 根据 config 创建后端
         void open(const zct_slms::DatabaseConfig& cfg) {
             std::unique_lock lock(mtx_);
             if (impl_) {

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
+
 #include "api/v1/uih.h"
 
 namespace zct_slms::inside::api::v1::app::subusers {
-    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr &)>&& cb) {
+    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& cb) {
         namespace c = zct_slms::inside::api::v1::common;
         const auto type = c::currentUserType(req);
         const auto uid = c::currentUserId(req);
@@ -59,7 +61,7 @@ namespace zct_slms::inside::api::v1::app::subusers {
 }
 
 namespace zct_slms::inside::api::v1::app::subuser_access {
-    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr &)>&& cb) {
+    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& cb) {
         namespace c = zct_slms::inside::api::v1::common;
         auto auth = zct_slms::service::AuthService::authenticateSession(c::authBearer(req));
         auto fail = [&](int code, const char* m) { cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(code, m))); };
@@ -86,7 +88,7 @@ namespace zct_slms::inside::api::v1::app::subuser_access {
 }
 
 namespace zct_slms::inside::api::v1::admin::subuser_policy {
-    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr &)>&& cb) {
+    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& cb) {
         const auto session = zct_slms::service::AuthService::authenticateSession(zct_slms::inside::api::v1::common::authBearer(req));
         if (!session.success || session.user_type != "ADMIN") {
             cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(zct_slms::api::ErrorCode::UNAUTHORIZED, "需要管理员登录")));

@@ -2,6 +2,7 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>

@@ -2,7 +2,9 @@
 // Copyright (c) 2026 ZCT Studio
 
 #pragma once
+
 #include "services/recovery.hpp"
+#include "services/object_storage.hpp"
 #include <set>
 #include <chrono>
 #include <iomanip>
@@ -199,6 +201,67 @@ namespace zct_slms::tickets {
         );
     }
 
+    // A failed write leaves the original encrypted database payload untouched.
+    // A failed restart can safely retry; each object has an unpredictable name.
+    inline void migrateImageStorage() {
+        imageSchema();
+        auto& db = zct_slms::db::Database::instance();
+        const auto rows = db.queryParams("SELECT id,payload FROM ticket_images");
+        for (const auto& row : rows) {
+            const auto id = zct_slms::repo::getStr(row, "id");
+            const auto payload = zct_slms::repo::getStr(row, "payload");
+            if (payload.starts_with("local://") || payload.starts_with("s3://")) continue;
+            // Authenticate the ciphertext before discarding the database copy.
+            auto data = decrypted(payload);
+            if (!data["data"].isString()) throw std::runtime_error("Invalid stored ticket image");
+            const auto location = zct_slms::object_storage::put("tickets/" + zct_slms::crypto::randomHex(32), payload);
+            if (zct_slms::object_storage::get(location) != payload) throw std::runtime_error("Ticket image storage verification failed");
+            db.execParams("UPDATE ticket_images SET payload = ? WHERE id = ? AND payload = ?", location, id, payload);
+        }
+    }
+
+    inline void migrateInlineImages() {
+        auto& db = zct_slms::db::Database::instance();
+
+        for (const auto& row : db.queryParams("SELECT id,sender_role,sender_id,body,created_at FROM ticket_messages WHERE body LIKE '%data:image/%'")) {
+            auto body = zct_slms::repo::getStr(row, "body");
+            const auto original = body;
+            size_t position;
+            while ((position = body.find("data:image/")) != std::string::npos) {
+                const auto commaAt = body.find(',', position);
+                if (commaAt == std::string::npos) throw std::runtime_error("Invalid inline image");
+                const auto stop = body.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", commaAt + 1);
+                const auto length = (stop == std::string::npos ? body.size() : stop) - position;
+                const auto value = body.substr(position, length);
+                const auto comma = value.find(',');
+                const auto semicolon = value.find(';');
+                const auto mime = value.substr(5, semicolon - 5);
+                if ((mime != "image/png" && mime != "image/jpeg" && mime != "image/webp") || value.substr(semicolon, 8) != ";base64,") throw std::runtime_error(
+                    "Invalid legacy image format"
+                );
+                const auto bytes = zct_slms::crypto::base64Decode(value.substr(comma + 1));
+                if (bytes.empty() || bytes.size() > 1048576) throw std::runtime_error("Invalid legacy ticket image");
+                Json image;
+                image["data"] = zct_slms::crypto::base64Encode(bytes);
+                const auto id = zct_slms::crypto::randomHex(32);
+                const auto payload = encrypted(image);
+                const auto location = zct_slms::object_storage::put("tickets/" + id, payload);
+                if (zct_slms::object_storage::get(location) != payload) throw std::runtime_error("Legacy image verification failed");
+                db.execParams(
+                    "INSERT INTO ticket_images(id,owner_role,owner_id,mime,payload,created_at) VALUES(?,?,?,?,?,?)",
+                    id,
+                    zct_slms::repo::getStr(row, "sender_role"),
+                    zct_slms::repo::getInt(row, "sender_id"),
+                    mime,
+                    location,
+                    zct_slms::repo::getInt(row, "created_at")
+                );
+                body.replace(position, length, "/api/v1/tickets/image?image=" + id);
+            }
+            if (body != original) db.execParams("UPDATE ticket_messages SET body=? WHERE id=? AND body=?", body, zct_slms::repo::getStr(row, "id"), original);
+        }
+    }
+
     inline auto imageAuth(const Req& req) {
         auto a = zct_slms::service::AuthService::authenticateSession(common::authBearer(req));
         if (a.success)return a;
@@ -248,7 +311,7 @@ namespace zct_slms::tickets {
                 a.user_type,
                 a.user_id,
                 mime,
-                encrypted(value),
+                zct_slms::object_storage::put("tickets/" + zct_slms::crypto::randomHex(32), encrypted(value)),
                 now()
             );
             Json out;
@@ -278,7 +341,9 @@ namespace zct_slms::tickets {
                 }
             }
             if (!allowed)throw std::runtime_error("无权查看图片");
-            auto data = zct_slms::crypto::base64Decode(decrypted(zct_slms::repo::getStr(rows[0], "payload"))["data"].asString());
+            auto location = zct_slms::repo::getStr(rows[0], "payload");
+            const auto encryptedData = (location.starts_with("local://") || location.starts_with("s3://")) ? zct_slms::object_storage::get(location) : location;
+            auto data = zct_slms::crypto::base64Decode(decrypted(encryptedData)["data"].asString());
             auto response = drogon::HttpResponse::newHttpResponse();
             response->setBody(data);
             response->setContentTypeString(zct_slms::repo::getStr(rows[0], "mime"));

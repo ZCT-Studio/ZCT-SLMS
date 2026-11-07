@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 ZCT Studio
+
 #pragma once
 
 #include <exception>
@@ -22,7 +23,6 @@ namespace zct_slms::db {
     using Row = std::vector<std::pair<std::string, std::string>>;
     using ResultSet = std::vector<Row>;
 
-    // ── 纯虚接口：SQLite / PostgreSQL / MySQL 三后端公共 API ──
     class IDatabase {
     public:
         virtual ~IDatabase() = default;

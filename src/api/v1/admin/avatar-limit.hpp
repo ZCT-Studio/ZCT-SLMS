@@ -6,7 +6,7 @@
 #include "api/v1/uih.h"
 
 namespace zct_slms::inside::api::v1::admin::avatar_limit {
-    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& cb) {
+    inline void handle(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr &)>&& cb) {
         namespace c = zct_slms::inside::api::v1::common;
         const auto auth = zct_slms::service::AuthService::authenticateSession(c::authBearer(req));
         auto fail = [&](int code, const char* msg) { cb(drogon::HttpResponse::newHttpJsonResponse(zct_slms::api::makeFail(code, msg))); };
